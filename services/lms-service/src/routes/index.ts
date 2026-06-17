@@ -53,6 +53,49 @@ router.post('/modules/:moduleId/content',
   courseCtrl.createContent
 );
 
+// ── Panel Instructor ──────────────────────────────────────────────────────────
+router.get('/instructor/courses',
+  requireAuth,
+  requireRole('instructor', 'admin'),
+  courseCtrl.myCourses
+);
+
+router.delete('/courses/:id',
+  requireAuth,
+  requireRole('instructor', 'admin'),
+  courseCtrl.deleteCourse
+);
+
+router.post('/courses/:id/publish',
+  requireAuth,
+  requireRole('instructor', 'admin'),
+  courseCtrl.togglePublish
+);
+
+router.patch('/modules/:moduleId',
+  requireAuth,
+  requireRole('instructor', 'admin'),
+  courseCtrl.patchModule
+);
+
+router.delete('/modules/:moduleId',
+  requireAuth,
+  requireRole('instructor', 'admin'),
+  courseCtrl.deleteModule
+);
+
+router.patch('/modules/:moduleId/content/:contentId',
+  requireAuth,
+  requireRole('instructor', 'admin'),
+  courseCtrl.patchContent
+);
+
+router.delete('/modules/:moduleId/content/:contentId',
+  requireAuth,
+  requireRole('instructor', 'admin'),
+  courseCtrl.deleteContent
+);
+
 // ── Matrículas ────────────────────────────────────────────────────────────────
 router.get('/enrollments',
   requireAuth,

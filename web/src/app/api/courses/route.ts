@@ -24,3 +24,18 @@ export async function GET(req: NextRequest) {
   const data = await res.json();
   return NextResponse.json(data, { status: res.status });
 }
+
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+  const body = await req.json();
+  const res = await fetch(`${LMS}/api/courses`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.accessToken}` },
+    body:    JSON.stringify(body),
+  });
+
+  const data = await res.json();
+  return NextResponse.json(data, { status: res.status });
+}

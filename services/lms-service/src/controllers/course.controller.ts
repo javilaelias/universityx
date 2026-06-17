@@ -130,3 +130,105 @@ export async function createContent(req: Request, res: Response, next: NextFunct
     res.status(201).json({ content_item: item });
   } catch (err) { next(err); }
 }
+
+// ── GET /instructor/courses ────────────────────────────────────────────────────
+export async function myCourses(req: Request, res: Response, next: NextFunction) {
+  try {
+    const courses = await repo.findCoursesByInstructor(req.user!.sub);
+    res.json({ courses });
+  } catch (err) { next(err); }
+}
+
+// ── DELETE /courses/:id ────────────────────────────────────────────────────────
+export async function deleteCourse(req: Request, res: Response, next: NextFunction) {
+  try {
+    const course = await repo.findCourseById(req.params.id);
+    if (!course) { res.status(404).json({ error: 'Curso no encontrado' }); return; }
+    if (course.instructor_id !== req.user!.sub && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Sin permisos' }); return;
+    }
+    await repo.deleteCourseById(req.params.id);
+    await cacheInvalidate(`course:${req.params.id}`);
+    await cacheInvalidate('courses:list:*');
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
+// ── POST /courses/:id/publish ─────────────────────────────────────────────────
+export async function togglePublish(req: Request, res: Response, next: NextFunction) {
+  try {
+    const course = await repo.findCourseById(req.params.id);
+    if (!course) { res.status(404).json({ error: 'Curso no encontrado' }); return; }
+    if (course.instructor_id !== req.user!.sub && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Sin permisos' }); return;
+    }
+    const updated = await repo.updateCourse(req.params.id, { is_published: !course.is_published });
+    await cacheInvalidate(`course:${req.params.id}`);
+    await cacheInvalidate('courses:list:*');
+    res.json({ course: updated });
+  } catch (err) { next(err); }
+}
+
+// ── PATCH /modules/:moduleId ──────────────────────────────────────────────────
+export async function patchModule(req: Request, res: Response, next: NextFunction) {
+  try {
+    const mod = await repo.findModuleById(req.params.moduleId);
+    if (!mod) { res.status(404).json({ error: 'Módulo no encontrado' }); return; }
+    const course = await repo.findCourseById(mod.course_id);
+    if (course?.instructor_id !== req.user!.sub && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Sin permisos' }); return;
+    }
+    const data = { ...req.body };
+    if ('release_date' in data && data.release_date) {
+      data.release_date = new Date(data.release_date);
+    }
+    const updated = await repo.updateModule(req.params.moduleId, data);
+    await cacheInvalidate(`course:${mod.course_id}`);
+    res.json({ module: updated });
+  } catch (err) { next(err); }
+}
+
+// ── DELETE /modules/:moduleId ─────────────────────────────────────────────────
+export async function deleteModule(req: Request, res: Response, next: NextFunction) {
+  try {
+    const mod = await repo.findModuleById(req.params.moduleId);
+    if (!mod) { res.status(404).json({ error: 'Módulo no encontrado' }); return; }
+    const course = await repo.findCourseById(mod.course_id);
+    if (course?.instructor_id !== req.user!.sub && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Sin permisos' }); return;
+    }
+    await repo.deleteModuleById(req.params.moduleId);
+    await cacheInvalidate(`course:${mod.course_id}`);
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
+// ── PATCH /modules/:moduleId/content/:contentId ───────────────────────────────
+export async function patchContent(req: Request, res: Response, next: NextFunction) {
+  try {
+    const item = await repo.findContentById(req.params.contentId);
+    if (!item) { res.status(404).json({ error: 'Contenido no encontrado' }); return; }
+    const mod = await repo.findModuleById(item.module_id);
+    const course = mod ? await repo.findCourseById(mod.course_id) : null;
+    if (course?.instructor_id !== req.user!.sub && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Sin permisos' }); return;
+    }
+    const updated = await repo.updateContentItemById(req.params.contentId, req.body);
+    res.json({ content_item: updated });
+  } catch (err) { next(err); }
+}
+
+// ── DELETE /modules/:moduleId/content/:contentId ──────────────────────────────
+export async function deleteContent(req: Request, res: Response, next: NextFunction) {
+  try {
+    const item = await repo.findContentById(req.params.contentId);
+    if (!item) { res.status(404).json({ error: 'Contenido no encontrado' }); return; }
+    const mod = await repo.findModuleById(item.module_id);
+    const course = mod ? await repo.findCourseById(mod.course_id) : null;
+    if (course?.instructor_id !== req.user!.sub && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Sin permisos' }); return;
+    }
+    await repo.deleteContentItemById(req.params.contentId);
+    res.status(204).send();
+  } catch (err) { next(err); }
+}

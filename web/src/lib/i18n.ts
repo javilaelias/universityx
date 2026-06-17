@@ -49,6 +49,9 @@ const es = {
   'dash.courses':        'Mis cursos',
   'dash.progress':       'Progreso',
   'dash.notifications':  'Notificaciones',
+
+  // Instructor panel
+  'nav.instructor':      'Panel Instructor',
 } as const;
 
 const en: Record<keyof typeof es, string> = {
@@ -95,6 +98,8 @@ const en: Record<keyof typeof es, string> = {
   'dash.courses':        'My courses',
   'dash.progress':       'Progress',
   'dash.notifications':  'Notifications',
+
+  'nav.instructor':      'Instructor Panel',
 };
 
 export type Lang = 'es' | 'en';

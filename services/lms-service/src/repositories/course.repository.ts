@@ -165,6 +165,65 @@ export async function createContentItem(data: {
   return rows[0];
 }
 
+// ── Panel Instructor ──────────────────────────────────────────────────────────
+
+export async function findCoursesByInstructor(instructorId: string) {
+  const { rows } = await query<Course & { module_count: number; content_count: number; enrolled_count: number }>(
+    `SELECT c.*,
+            COUNT(DISTINCT m.id)::int  AS module_count,
+            COUNT(DISTINCT ci.id)::int AS content_count,
+            COUNT(DISTINCT e.id)::int  AS enrolled_count
+     FROM   courses c
+     LEFT   JOIN modules m        ON m.course_id  = c.id
+     LEFT   JOIN content_items ci ON ci.module_id = m.id
+     LEFT   JOIN enrollments e    ON e.course_id  = c.id
+     WHERE  c.instructor_id = $1
+     GROUP  BY c.id
+     ORDER  BY c.created_at DESC`,
+    [instructorId]
+  );
+  return rows;
+}
+
+export async function deleteCourseById(id: string) {
+  const { rowCount } = await query('DELETE FROM courses WHERE id = $1', [id]);
+  return (rowCount ?? 0) > 0;
+}
+
+export async function updateModule(id: string, data: Partial<Omit<Module, 'id' | 'course_id' | 'is_locked'>>) {
+  const fields = Object.keys(data);
+  if (!fields.length) return null;
+  const sets = fields.map((k, i) => `${k} = $${i + 2}`).join(', ');
+  const vals  = fields.map((k) => (data as Record<string, unknown>)[k]);
+  const { rows } = await query<Module>(
+    `UPDATE modules SET ${sets} WHERE id = $1 RETURNING *`,
+    [id, ...vals]
+  );
+  return rows[0] ?? null;
+}
+
+export async function deleteModuleById(id: string) {
+  const { rowCount } = await query('DELETE FROM modules WHERE id = $1', [id]);
+  return (rowCount ?? 0) > 0;
+}
+
+export async function updateContentItemById(id: string, data: Partial<Omit<ContentItem, 'id' | 'module_id'>>) {
+  const fields = Object.keys(data);
+  if (!fields.length) return null;
+  const sets = fields.map((k, i) => `${k} = $${i + 2}`).join(', ');
+  const vals  = fields.map((k) => (data as Record<string, unknown>)[k]);
+  const { rows } = await query<ContentItem>(
+    `UPDATE content_items SET ${sets} WHERE id = $1 RETURNING *`,
+    [id, ...vals]
+  );
+  return rows[0] ?? null;
+}
+
+export async function deleteContentItemById(id: string) {
+  const { rowCount } = await query('DELETE FROM content_items WHERE id = $1', [id]);
+  return (rowCount ?? 0) > 0;
+}
+
 // ── Resumen de curso (módulos + items + recuento) ─────────────────────────────
 
 export async function getCourseWithModules(courseId: string) {
