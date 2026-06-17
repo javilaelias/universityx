@@ -17,6 +17,6 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static     ./.next/static
 COPY --from=builder /app/public           ./public
 EXPOSE 3000
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s \
-  CMD wget -qO- http://localhost:3000/api/auth/providers || exit 1
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s \
+  CMD wget -qO- http://127.0.0.1:3000/api/auth/providers || exit 1
 CMD ["node", "server.js"]
