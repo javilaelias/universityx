@@ -1,13 +1,14 @@
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider      from 'next-auth/providers/google';
 import AzureADProvider     from 'next-auth/providers/azure-ad';
-import type { NextAuthOptions, Provider } from 'next-auth';
+import type { NextAuthOptions } from 'next-auth';
 
 const AUTH_URL = process.env.AUTH_SERVICE_URL ?? 'http://localhost:4001';
 
 // ── Providers ─────────────────────────────────────────────────────────────────
 
-const providers: Provider[] = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const providers: any[] = [
   // Credenciales propias
   CredentialsProvider({
     id:   'credentials',
