@@ -23,46 +23,45 @@ Un estudiante puede: **registrarse → matricularse en un curso → consumir el 
 ### Funcionalidades incluidas
 
 #### Auth & Usuarios
-- [ ] `POST /auth/register` — registro con email + contraseña
-- [ ] `POST /auth/login` — login con JWT + Refresh Token (Redis)
-- [ ] `POST /auth/refresh` — rotación de tokens
-- [ ] `POST /auth/logout` — invalidar sesión
-- [ ] `GET  /auth/me` — perfil del usuario autenticado
-- [ ] SSO stub (SAML 2.0 / OIDC) — flujo completo con proveedor real
-- [ ] Página de login web (Next.js)
+- [x] `POST /auth/register` — registro con email + contraseña
+- [x] `POST /auth/login` — login con JWT + Refresh Token (Redis)
+- [x] `POST /auth/refresh` — rotación de tokens
+- [x] `POST /auth/logout` — invalidar sesión
+- [x] `GET  /auth/me` — perfil del usuario autenticado
+- [x] SSO stub (SAML 2.0 / OIDC) — flujo completo con proveedor real
+- [x] Página de login web (Next.js)
 
 #### Cursos y Contenido (LMS)
-- [ ] `GET  /courses` — catálogo de cursos publicados
-- [ ] `GET  /courses/:id` — detalle de curso con módulos
-- [ ] `POST /enrollments` — matricularse en un curso
-- [ ] `GET  /courses/:id/modules/:moduleId` — módulo con contenido
-- [ ] Reproductor de video (HLS via CDN)
-- [ ] Visor de PDFs/documentos
-- [ ] `GET  /courses/:id/progress` — progreso del estudiante
+- [x] `GET  /courses` — catálogo de cursos publicados
+- [x] `GET  /courses/:id` — detalle de curso con módulos
+- [x] `POST /enrollments` — matricularse en un curso
+- [x] `GET  /courses/:id/modules/:moduleId` — módulo con contenido
+- [x] Reproductor de video (HLS via CDN)
+- [x] Visor de PDFs/documentos
+- [x] `GET  /courses/:id/progress` — progreso del estudiante
 
 #### Dashboard Web
-- [ ] Componente `IntelligentDashboard` (ya creado ✓)
-- [ ] API route `/api/dashboard/[userId]` que alimenta el componente
-- [ ] Cursos en progreso con porcentaje real
-- [ ] Tareas pendientes (quizzes, asignaciones)
+- [x] Componente `IntelligentDashboard`
+- [x] API route `/api/dashboard/[userId]` que alimenta el componente
+- [x] Cursos en progreso con porcentaje real
+- [x] Tareas pendientes (quizzes, asignaciones)
 
 #### Quizzes Básicos
-- [ ] `GET  /quizzes/:id` — preguntas del quiz
-- [ ] `POST /quizzes/:id/submit` — enviar respuestas + calificación
+- [x] `GET  /quizzes/:id` — preguntas del quiz
+- [x] `POST /quizzes/:id/submit` — enviar respuestas + calificación
 
 #### Soporte (Helpdesk Básico)
-- [ ] `POST /tickets` — crear ticket
-- [ ] `GET  /tickets` — listar mis tickets
-- [ ] `PATCH /tickets/:id` — responder / actualizar ticket
-- [ ] Página de soporte web
+- [x] `POST /tickets` — crear ticket
+- [x] `GET  /tickets` — listar mis tickets
+- [x] `PATCH /tickets/:id` — responder / actualizar ticket
+- [x] Página de soporte web
 
 #### Infraestructura
-- [ ] `auth-service` completo (Node.js + Express + TypeScript) ← **EN PROGRESO**
-- [ ] `lms-service` (CRUD de cursos, módulos, progreso)
-- [ ] API Gateway mínimo (Nginx reverse proxy local)
-- [ ] Dockerfiles para cada servicio
-- [ ] docker-compose actualizado con servicios backend
-- [ ] Variables de entorno validadas con Zod
+- [x] `auth-service` completo (Node.js + Express + TypeScript)
+- [x] `lms-service` (CRUD de cursos, módulos, progreso)
+- [x] Dockerfiles para cada servicio
+- [x] docker-compose completo con todos los servicios
+- [x] Variables de entorno validadas con Zod
 
 ### Lo que NO entra en MVP
 - Modo offline Android
@@ -122,17 +121,36 @@ Eliminar la dependencia de conectividad. Un estudiante con señal inestable pued
 - [ ] Algoritmo simple: cursos con bajo progreso → sugerir contenido relacionado
 - [ ] Perfil de aprendizaje en MongoDB (pace, preferred_types, peak_hours)
 
-#### Badges Básicos
-- [ ] `credentials-service` — emisión de badges Open Badges 3.0
-- [ ] Badge automático al completar un curso
+#### Panel Instructor
+- [x] CRUD completo de cursos propios (crear, editar, publicar, eliminar)
+- [x] Gestión de módulos y contenido inline (accordion editor)
+- [x] Validación de propiedad en todos los endpoints de mutación
+- [x] Navbar con enlace "Panel Instructor" visible solo para instructor/admin
+
+#### Badges y Certificados
+- [x] `credentials-service` — emisión de badges Open Badges 3.0
+- [x] Badge al completar un curso al 100%
+- [x] Perfil del estudiante con badges públicos
+- [x] Certificado PDF descargable (pdfkit, A4 landscape)
+- [x] Página pública de verificación `/verify/[id]` (sin auth)
 - [ ] Integración Credly / Acreditta
-- [ ] Perfil del estudiante con badges públicos
+
+#### Tests Automatizados
+- [x] Vitest + supertest: auth-service (9 tests), lms-service (9), credentials-service (7)
+- [x] CI GitHub Actions: job `unit-tests` bloqueante para docker-build
+- [ ] Playwright E2E web
+- [ ] JUnit Android
 
 #### Mejoras Web
-- [ ] Modo oscuro (Dark Mode) completo
-- [ ] PWA básica (Service Worker, instalable en móvil)
-- [ ] Búsqueda de cursos con pg_trgm
-- [ ] Filtros por nivel, duración, categoría
+- [x] Modo oscuro (Dark Mode) completo
+- [x] i18n ES/EN
+- [x] Búsqueda de cursos
+- [x] Filtros por nivel
+- [ ] **PWA — Service Worker (siguiente)** ← próximo
+- [ ] Búsqueda avanzada con pg_trgm
+
+#### Documentación
+- [x] Manual de usuario (docs/05-manual-usuario.md) — estudiante, instructor, admin
 
 ### Criterios de éxito V2
 - Estudiante completa un módulo offline y el progreso se sincroniza sin pérdida
@@ -232,5 +250,20 @@ tickets básicos   ──→   chatbot fase 1      ──→  chatbot RAG comple
 
 ---
 
-## Próxima tarea inmediata
-→ **auth-service** (Node.js + Express + TypeScript) — MVP, Semana 1
+## Estado actual (2026-06-17)
+
+### Completado
+- ✅ MVP completo (auth, lms, helpdesk, sync, notification, ai, credentials)
+- ✅ Panel Instructor (CRUD cursos/módulos/contenido + publish)
+- ✅ Certificados PDF + página de verificación pública Open Badges 3.0
+- ✅ Tests Vitest en 3 servicios críticos + CI unit-tests job
+- ✅ Servidor de pruebas RHEL 10 en 10.118.67.55:8080
+- ✅ Manual de usuario (docs/05-manual-usuario.md)
+
+### Pendiente — orden de prioridad
+1. **PWA** — `next-pwa` o Service Worker manual; manifest, offline shell, cache de assets
+2. **media-service** — FFmpeg + HLS transcoding para subida de videos
+3. **Playwright E2E** — flujos críticos web (login, enroll, complete, download cert)
+4. **JUnit Android** — tests unitarios del SDK de sync y repositorios
+5. **Kubernetes + Helm** — manifests para producción
+6. **Integración Credly / Acreditta** — export de badges externos
