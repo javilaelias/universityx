@@ -1,8 +1,10 @@
-import { Response }      from 'express';
-import { z }             from 'zod';
-import { pool }          from '../db/postgres';
-import { buildOpenBadge } from '../lib/openbadges';
-import type { AuthRequest } from '../middleware/auth';
+import { Response }              from 'express';
+import { z }                     from 'zod';
+import { pool }                  from '../db/postgres';
+import { buildOpenBadge }        from '../lib/openbadges';
+import { streamCertificatePDF }  from '../lib/certificate-pdf';
+import { env }                   from '../config/env';
+import type { AuthRequest }      from '../middleware/auth';
 
 const issueSchema = z.object({
   userId:   z.string().uuid(),
@@ -125,7 +127,7 @@ export const credentialCtrl = {
     const { rows: [row] } = await pool.query(
       `SELECT ub.id, ub.issued_at, ub.user_id,
               b.name, b.description, b.course_id,
-              u.email, c.title AS course_title
+              u.email, u.full_name, c.title AS course_title
        FROM   user_badges ub
        JOIN   badges  b ON b.id  = ub.badge_id
        JOIN   users   u ON u.id  = ub.user_id
@@ -145,6 +147,38 @@ export const credentialCtrl = {
       issuedAt:   new Date(row.issued_at),
     });
 
-    res.json({ id: row.id, issuedAt: row.issued_at, credential });
+    res.json({ id: row.id, issuedAt: row.issued_at, recipientName: row.full_name, credential });
+  },
+
+  // GET /credentials/:id/pdf — stream PDF certificate (public)
+  async getPdf(req: AuthRequest, res: Response) {
+    try {
+      const { rows: [row] } = await pool.query(
+        `SELECT ub.id, ub.issued_at,
+                b.name, b.course_id,
+                u.full_name, c.title AS course_title
+         FROM   user_badges ub
+         JOIN   badges  b ON b.id  = ub.badge_id
+         JOIN   users   u ON u.id  = ub.user_id
+         LEFT   JOIN courses c ON c.id = b.course_id
+         WHERE  ub.id = $1 AND ub.is_public = true`,
+        [req.params.id],
+      );
+
+      if (!row) { res.status(404).json({ message: 'Credencial no encontrada' }); return; }
+
+      streamCertificatePDF(res, {
+        recipientName: row.full_name,
+        courseName:    row.course_title ?? row.name,
+        issuerName:    env.ISSUER_NAME,
+        issuedAt:      new Date(row.issued_at),
+        credentialId:  row.id,
+        issuerUrl:     env.ISSUER_URL,
+      });
+    } catch (err) {
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Error generando certificado' });
+      }
+    }
   },
 };

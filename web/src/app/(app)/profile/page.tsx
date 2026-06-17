@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession }           from "next-auth/react";
-import { User, Award, ExternalLink, RefreshCw } from "lucide-react";
+import { User, Award, ExternalLink, RefreshCw, Download } from "lucide-react";
 
 interface Badge {
   id:              string;
@@ -43,7 +43,7 @@ function BadgeCard({ badge }: { badge: Badge }) {
       </div>
       <div className="flex flex-col gap-1.5 flex-shrink-0">
         <a
-          href={badge.verifyUrl}
+          href={`/verify/${badge.id}`}
           target="_blank"
           rel="noopener noreferrer"
           title="Verificar credencial"
@@ -51,6 +51,14 @@ function BadgeCard({ badge }: { badge: Badge }) {
         >
           <ExternalLink className="w-3 h-3" />
           Verificar
+        </a>
+        <a
+          href={`/api/credentials/${badge.id}/pdf`}
+          title="Descargar certificado PDF"
+          className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400 hover:underline"
+        >
+          <Download className="w-3 h-3" />
+          PDF
         </a>
       </div>
     </div>
