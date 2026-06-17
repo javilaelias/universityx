@@ -1,4 +1,4 @@
-﻿{
+{
     "name":  "notification-service",
     "version":  "1.0.0",
     "private":  true,
@@ -22,7 +22,7 @@
                             "@types/express":  "^4.17.21",
                             "@types/jsonwebtoken":  "^9.0.6",
                             "@types/nodemailer":  "^6.4.14",
-                            "@types/node":  "^20",
+                            "@types/node":  "^25",
                             "@types/pg":  "^8.11.2",
                             "tsx":  "^4.7.1",
                             "typescript":  "^5"
