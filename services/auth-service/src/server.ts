@@ -18,9 +18,13 @@ async function start() {
     console.log(`   POST  /auth/login`);
     console.log(`   POST  /auth/refresh`);
     console.log(`   POST  /auth/logout`);
-    console.log(`   GET   /auth/me         (requiere Bearer token)`);
-    console.log(`   POST  /auth/logout-all (requiere Bearer token)`);
-    console.log(`   GET   /auth/sso/init   (stub - próximamente)`);
+    console.log(`   GET   /auth/me              (requiere Bearer token)`);
+    console.log(`   POST  /auth/logout-all      (requiere Bearer token)`);
+    console.log(`   POST  /auth/sso/provision   (JIT: Google / Microsoft)`);
+    console.log(`   POST  /auth/sso/exchange-code (SAML one-time code)`);
+    console.log(`   GET   /auth/sso/saml/metadata`);
+    console.log(`   GET   /auth/sso/init        (SAML redirect → IdP)`);
+    console.log(`   POST  /auth/sso/callback    (SAML ACS)`);
   });
 }
 
