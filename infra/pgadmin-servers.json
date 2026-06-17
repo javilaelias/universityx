@@ -1,0 +1,15 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Universidad X — PostgreSQL Dev",
+      "Group": "Servers",
+      "Host": "ux_postgres",
+      "Port": 5432,
+      "MaintenanceDB": "universidadx",
+      "Username": "ux_admin",
+      "SSLMode": "prefer",
+      "PassFile": "/pgpass",
+      "Comment": "Base de datos de desarrollo local"
+    }
+  }
+}

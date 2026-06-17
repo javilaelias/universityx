@@ -1,0 +1,378 @@
+# =============================================================================
+# Universidad X — Infraestructura Completa (MVP)
+# =============================================================================
+# Infraestructura:  postgres · mongodb · redis · pgadmin · mongo-express
+# Microservicios:   auth(4001) · lms(4002) · notification(4003)
+#                   helpdesk(4004) · sync(4005) · ai(4006) · credentials(4007)
+# Frontend:         web(3000)
+# =============================================================================
+
+services:
+
+  # ── PostgreSQL 16 ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ux_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-universidadx}
+      POSTGRES_USER:     ${POSTGRES_USER:-ux_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ux_dev_pass_2024}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ux_postgres_data:/var/lib/postgresql/data
+      - ./docs/02-database-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./infra/migrations:/docker-entrypoint-initdb.d/migrations:ro
+      - ./infra/init-db.sh:/docker-entrypoint-initdb.d/02-run-migrations.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ux_admin} -d ${POSTGRES_DB:-universidadx}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - ux_network
+
+  # ── MongoDB 7 ────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7-jammy
+    container_name: ux_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-ux_admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-ux_dev_pass_2024}
+      MONGO_INITDB_DATABASE:      ${MONGO_DB:-universidadx}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - ux_mongo_data:/data/db
+      - ./infra/mongo-init.js:/docker-entrypoint-initdb.d/01-init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ux_network
+
+  # ── Redis 7 ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ux_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-ux_dev_pass_2024}
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy noeviction
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - ux_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-ux_dev_pass_2024}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ux_network
+
+  # ── pgAdmin 4 ────────────────────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: ux_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL:               ${PGADMIN_EMAIL:-admin@universidadx.com}
+      PGADMIN_DEFAULT_PASSWORD:            ${PGADMIN_PASSWORD:-admin1234}
+      PGADMIN_CONFIG_SERVER_MODE:          "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - ux_pgadmin_data:/var/lib/pgadmin
+      - ./infra/pgadmin-servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ux_network
+
+  # ── Mongo Express ────────────────────────────────────────────────────────────
+  mongo-express:
+    image: mongo-express:1.0.2-20
+    container_name: ux_mongo_express
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USER:-ux_admin}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASSWORD:-ux_dev_pass_2024}
+      ME_CONFIG_MONGODB_SERVER:        ux_mongo
+      ME_CONFIG_MONGODB_PORT:          "27017"
+      ME_CONFIG_BASICAUTH_USERNAME:    ${ME_USER:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD:    ${ME_PASSWORD:-admin1234}
+      ME_CONFIG_OPTIONS_EDITORTHEME:   "dracula"
+    ports:
+      - "${ME_PORT:-8082}:8081"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ux_network
+
+  # ── auth-service :4001 ───────────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: ux_auth
+    restart: unless-stopped
+    env_file: ./services/auth-service/.env
+    environment:
+      DATABASE_URL:    postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
+      REDIS_URL:       redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
+      WEB_BASE_URL:    ${NEXTAUTH_URL:-http://localhost:3000}
+      # SSO SAML (opcional — sin estas vars los endpoints devuelven 503)
+      SSO_ENTRY_POINT: ${SSO_ENTRY_POINT:-}
+      SSO_ISSUER:      ${SSO_ISSUER:-universidad-x}
+      SSO_CERT:        ${SSO_CERT:-}
+      SSO_CALLBACK_URL: ${SSO_CALLBACK_URL:-}
+    ports:
+      - "4001:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - ux_network
+
+  # ── lms-service :4002 ────────────────────────────────────────────────────────
+  lms-service:
+    build:
+      context: ./services/lms-service
+      dockerfile: Dockerfile
+    container_name: ux_lms
+    restart: unless-stopped
+    env_file: ./services/lms-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
+      REDIS_URL:    redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
+    ports:
+      - "4002:4002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4002/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - ux_network
+
+  # ── notification-service :4003 ───────────────────────────────────────────────
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: ux_notification
+    restart: unless-stopped
+    env_file: ./services/notification-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
+      REDIS_URL:    redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
+    ports:
+      - "4003:4003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4003/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - ux_network
+
+  # ── helpdesk-service :4004 ───────────────────────────────────────────────────
+  helpdesk-service:
+    build:
+      context: ./services/helpdesk-service
+      dockerfile: Dockerfile
+    container_name: ux_helpdesk
+    restart: unless-stopped
+    env_file: ./services/helpdesk-service/.env
+    environment:
+      DATABASE_URL:             postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
+      NOTIFICATION_SERVICE_URL: http://ux_notification:4003
+    ports:
+      - "4004:4004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4004/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - ux_network
+
+  # ── sync-service :4005 ───────────────────────────────────────────────────────
+  sync-service:
+    build:
+      context: ./services/sync-service
+      dockerfile: Dockerfile
+    container_name: ux_sync
+    restart: unless-stopped
+    env_file: ./services/sync-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
+    ports:
+      - "4005:4005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4005/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - ux_network
+
+  # ── ai-service :4006 ────────────────────────────────────────────────────────
+  ai-service:
+    build:
+      context: ./services/ai-service
+      dockerfile: Dockerfile
+    container_name: ux_ai
+    restart: unless-stopped
+    env_file: ./services/ai-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
+      MONGO_URL:    mongodb://${MONGO_USER:-ux_admin}:${MONGO_PASSWORD:-ux_dev_pass_2024}@ux_mongo:27017/${MONGO_DB:-universidadx}?authSource=admin
+    ports:
+      - "4006:4006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:4006/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    networks:
+      - ux_network
+
+  # ── credentials-service :4007 ────────────────────────────────────────────────
+  credentials-service:
+    build:
+      context: ./services/credentials-service
+      dockerfile: Dockerfile
+    container_name: ux_credentials
+    restart: unless-stopped
+    env_file: ./services/credentials-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
+    ports:
+      - "4007:4007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4007/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - ux_network
+
+  # ── web (Next.js) :3000 ──────────────────────────────────────────────────────
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-universidad-x-nextauth-secret-dev-2024}
+        NEXTAUTH_URL:    ${NEXTAUTH_URL:-http://localhost:3000}
+    container_name: ux_web
+    restart: unless-stopped
+    environment:
+      NEXTAUTH_URL:             ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET:          ${NEXTAUTH_SECRET:-universidad-x-nextauth-secret-dev-2024}
+      AUTH_SERVICE_URL:         http://ux_auth:4001
+      LMS_SERVICE_URL:          http://ux_lms:4002
+      NOTIFICATION_SERVICE_URL: http://ux_notification:4003
+      HELPDESK_SERVICE_URL:     http://ux_helpdesk:4004
+      SYNC_SERVICE_URL:         http://ux_sync:4005
+      AI_SERVICE_URL:           http://ux_ai:4006
+      CREDENTIALS_SERVICE_URL:  http://ux_credentials:4007
+      AUTH_EXTERNAL_URL:        ${AUTH_EXTERNAL_URL:-http://localhost:4001}
+      # SSO OIDC (opcional — sin estas vars los botones redirigen a /login?error=)
+      GOOGLE_CLIENT_ID:         ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET:     ${GOOGLE_CLIENT_SECRET:-}
+      AZURE_AD_CLIENT_ID:       ${AZURE_AD_CLIENT_ID:-}
+      AZURE_AD_CLIENT_SECRET:   ${AZURE_AD_CLIENT_SECRET:-}
+      AZURE_AD_TENANT_ID:       ${AZURE_AD_TENANT_ID:-common}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      lms-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      helpdesk-service:
+        condition: service_healthy
+      sync-service:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+      credentials-service:
+        condition: service_healthy
+    networks:
+      - ux_network
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  ux_postgres_data:
+    name: ux_postgres_data
+  ux_mongo_data:
+    name: ux_mongo_data
+  ux_redis_data:
+    name: ux_redis_data
+  ux_pgadmin_data:
+    name: ux_pgadmin_data
+
+# ── Network ───────────────────────────────────────────────────────────────────
+networks:
+  ux_network:
+    name: ux_network
+    driver: bridge

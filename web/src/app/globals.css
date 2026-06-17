@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Tema claro: fondos crema, texto oscuro verde */
+    --bg:      #faf7f0;
+    --surface: #ffffff;
+    --border:  #e8e0d0;
+    --text:    #1a2e1f;
+    --muted:   #5a7a62;
+  }
+  .dark {
+    /* Tema oscuro: verde muy oscuro */
+    --bg:      #0b1612;
+    --surface: #142118;
+    --border:  #1e3828;
+    --text:    #e8f5e9;
+    --muted:   #81c784;
+  }
+  body {
+    @apply bg-[var(--bg)] text-[var(--text)] antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  * { @apply border-[var(--border)]; }
+}
+
+@layer components {
+  .card {
+    @apply bg-[var(--surface)] rounded-xl border border-[var(--border)] shadow-sm;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg
+           bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white
+           transition-colors hover:bg-brand-700 focus:outline-none
+           focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg
+           px-4 py-2.5 text-sm font-medium text-[var(--muted)]
+           transition-colors hover:bg-brand-50 dark:hover:bg-brand-900/30;
+  }
+  .input {
+    @apply block w-full rounded-lg border border-[var(--border)]
+           bg-[var(--surface)] px-3.5 py-2.5 text-sm text-[var(--text)]
+           placeholder-[var(--muted)] shadow-sm
+           focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
+  }
+}

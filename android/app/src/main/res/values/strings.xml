@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Universidad X</string>
+    <string name="biometric_prompt_title">Autenticación biométrica</string>
+    <string name="biometric_prompt_subtitle">Verifica tu identidad para continuar</string>
+    <string name="biometric_prompt_cancel">Cancelar</string>
+</resources>

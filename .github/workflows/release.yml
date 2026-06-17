@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump type
+        required: true
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+jobs:
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Compute next version
+        id: version
+        run: |
+          LATEST=$(git tag --sort=-v:refname | grep '^v' | head -1)
+          LATEST=${LATEST:-v0.0.0}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST#v}"
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH+1)) ;;
+          esac
+          VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Next version: $VERSION"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV=$(git tag --sort=-v:refname | grep '^v' | head -1)
+          if [ -z "$PREV" ]; then
+            LOG=$(git log --oneline --no-merges | head -30)
+          else
+            LOG=$(git log "${PREV}..HEAD" --oneline --no-merges)
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Tag and push
+        run: |
+          git tag ${{ steps.version.outputs.version }}
+          git push origin ${{ steps.version.outputs.version }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Universidad X ${{ steps.version.outputs.version }}
+          body: |
+            ## Cambios en ${{ steps.version.outputs.version }}
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ---
+            **Imágenes Docker:**
+            ```
+            ghcr.io/${{ github.repository_owner }}/ux-web:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/ux-auth-service:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/ux-lms-service:${{ steps.version.outputs.version }}
+            ```
+          draft: false
+          prerelease: false

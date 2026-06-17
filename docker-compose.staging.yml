@@ -1,0 +1,41 @@
+# Staging overrides — used only in CD deploy
+# Replaces build: with pre-built images from GHCR
+# Usage: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+
+x-image: &registry ${REGISTRY:-ghcr.io/universidad-x}
+x-tag:   &tag      ${IMAGE_TAG:-latest}
+
+services:
+  auth-service:
+    build: !reset null
+    image: "${REGISTRY:-ghcr.io/universidad-x}/ux-auth-service:${IMAGE_TAG:-latest}"
+
+  lms-service:
+    build: !reset null
+    image: "${REGISTRY:-ghcr.io/universidad-x}/ux-lms-service:${IMAGE_TAG:-latest}"
+
+  notification-service:
+    build: !reset null
+    image: "${REGISTRY:-ghcr.io/universidad-x}/ux-notification-service:${IMAGE_TAG:-latest}"
+
+  helpdesk-service:
+    build: !reset null
+    image: "${REGISTRY:-ghcr.io/universidad-x}/ux-helpdesk-service:${IMAGE_TAG:-latest}"
+
+  sync-service:
+    build: !reset null
+    image: "${REGISTRY:-ghcr.io/universidad-x}/ux-sync-service:${IMAGE_TAG:-latest}"
+
+  ai-service:
+    build: !reset null
+    image: "${REGISTRY:-ghcr.io/universidad-x}/ux-ai-service:${IMAGE_TAG:-latest}"
+
+  credentials-service:
+    build: !reset null
+    image: "${REGISTRY:-ghcr.io/universidad-x}/ux-credentials-service:${IMAGE_TAG:-latest}"
+
+  web:
+    build: !reset null
+    image: "${REGISTRY:-ghcr.io/universidad-x}/ux-web:${IMAGE_TAG:-latest}"
+    environment:
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://staging.universidadx.com}
