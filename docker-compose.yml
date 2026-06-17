@@ -334,6 +334,7 @@ services:
       AI_SERVICE_URL:           http://ux_ai:4006
       CREDENTIALS_SERVICE_URL:  http://ux_credentials:4007
       AUTH_EXTERNAL_URL:        ${AUTH_EXTERNAL_URL:-http://localhost:4001}
+      HOSTNAME:                 "0.0.0.0"
       # SSO OIDC (opcional — sin estas vars los botones redirigen a /login?error=)
       GOOGLE_CLIENT_ID:         ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET:     ${GOOGLE_CLIENT_SECRET:-}
