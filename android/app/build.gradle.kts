@@ -75,7 +75,7 @@ dependencies {
     ksp("androidx.room:room-compiler:$roomVersion")
 
     // ── WorkManager (sync + descarga) ─────────────────────────────────────────────
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
     implementation("androidx.hilt:hilt-work:1.2.0")
 
     // ── Hilt (DI) ────────────────────────────────────────────────────────────────
