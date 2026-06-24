@@ -1,4 +1,4 @@
-﻿{
+{
     "name":  "@universidad-x/auth-service",
     "version":  "1.0.0",
     "private":  true,
@@ -34,7 +34,7 @@
                             "@types/supertest":   "^6.0.2",
                             "supertest":          "^7.0.0",
                             "tsx":                "^4.15.7",
-                            "typescript":         "^5.5.3",
+                            "typescript":         "^6.0.3",
                             "vitest":             "^2.0.0"
                         }
 }
