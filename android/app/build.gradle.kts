@@ -92,7 +92,7 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // ── Media3 / ExoPlayer (HLS + local) ─────────────────────────────────────────
-    val media3 = "1.4.1"
+    val media3 = "1.10.1"
     implementation("androidx.media3:media3-exoplayer:$media3")
     implementation("androidx.media3:media3-exoplayer-hls:$media3")
     implementation("androidx.media3:media3-ui:$media3")
