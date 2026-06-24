@@ -1,4 +1,4 @@
-﻿{
+{
     "name":  "helpdesk-service",
     "version":  "1.0.0",
     "private":  true,
@@ -21,6 +21,6 @@
                             "@types/node":  "^20",
                             "@types/pg":  "^8.11.2",
                             "tsx":  "^4.7.1",
-                            "typescript":  "^5"
+                            "typescript":  "^6"
                         }
 }
