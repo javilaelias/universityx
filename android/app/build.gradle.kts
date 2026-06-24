@@ -76,12 +76,12 @@ dependencies {
 
     // ── WorkManager (sync + descarga) ─────────────────────────────────────────────
     implementation("androidx.work:work-runtime-ktx:2.9.1")
-    implementation("androidx.hilt:hilt-work:1.2.0")
+    implementation("androidx.hilt:hilt-work:1.3.0")
 
     // ── Hilt (DI) ────────────────────────────────────────────────────────────────
     implementation("com.google.dagger:hilt-android:2.51.1")
     ksp("com.google.dagger:hilt-android-compiler:2.51.1")
-    ksp("androidx.hilt:hilt-compiler:1.2.0")
+    ksp("androidx.hilt:hilt-compiler:1.3.0")
 
     // ── Almacenamiento seguro ─────────────────────────────────────────────────────
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
