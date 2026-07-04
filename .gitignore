@@ -55,3 +55,11 @@ htmlcov/
 
 # ── Builds ─────────────────────────────────────────────────────────────────────
 android/app/schemas/
+
+# ── PWA (generados por @ducanh2912/next-pwa en build time) ────────────────────
+web/public/sw.js
+web/public/sw.js.map
+web/public/workbox-*.js
+web/public/workbox-*.js.map
+web/public/swe-worker-*.js
+web/public/swe-worker-*.js.map
