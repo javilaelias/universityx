@@ -4,6 +4,7 @@
 # Infraestructura:  postgres · mongodb · redis · pgadmin · mongo-express
 # Microservicios:   auth(4001) · lms(4002) · notification(4003)
 #                   helpdesk(4004) · sync(4005) · ai(4006) · credentials(4007)
+#                   media(4008)
 # Frontend:         web(3000)
 # =============================================================================
 
@@ -313,6 +314,38 @@ services:
     networks:
       - ux_network
 
+  # ── media-service :4008 ──────────────────────────────────────────────────────
+  media-service:
+    build:
+      context: ./services/media-service
+      dockerfile: Dockerfile
+    container_name: ux_media
+    restart: unless-stopped
+    env_file: ./services/media-service/.env
+    environment:
+      DATABASE_URL:       postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
+      REDIS_URL:          redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
+      MEDIA_STORAGE_PATH: /data/media
+      MEDIA_EXTERNAL_URL: ${MEDIA_EXTERNAL_URL:-http://localhost:4008}
+      ALLOWED_ORIGINS:    ${NEXTAUTH_URL:-http://localhost:3000}
+    ports:
+      - "${MEDIA_PORT:-4008}:4008"
+    volumes:
+      - ux_media_data:/data/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4008/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - ux_network
+
   # ── web (Next.js) :3000 ──────────────────────────────────────────────────────
   web:
     build:
@@ -333,6 +366,7 @@ services:
       SYNC_SERVICE_URL:         http://ux_sync:4005
       AI_SERVICE_URL:           http://ux_ai:4006
       CREDENTIALS_SERVICE_URL:  http://ux_credentials:4007
+      MEDIA_SERVICE_URL:        http://ux_media:4008
       AUTH_EXTERNAL_URL:        ${AUTH_EXTERNAL_URL:-http://localhost:4001}
       HOSTNAME:                 "0.0.0.0"
       # SSO OIDC (opcional — sin estas vars los botones redirigen a /login?error=)
@@ -358,6 +392,8 @@ services:
         condition: service_healthy
       credentials-service:
         condition: service_healthy
+      media-service:
+        condition: service_healthy
     networks:
       - ux_network
 
@@ -371,6 +407,8 @@ volumes:
     name: ux_redis_data
   ux_pgadmin_data:
     name: ux_pgadmin_data
+  ux_media_data:
+    name: ux_media_data
 
 # ── Network ───────────────────────────────────────────────────────────────────
 networks:

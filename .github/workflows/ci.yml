@@ -44,6 +44,7 @@ jobs:
           SYNC_SERVICE_URL: http://localhost:4005
           AI_SERVICE_URL: http://localhost:4006
           CREDENTIALS_SERVICE_URL: http://localhost:4007
+          MEDIA_SERVICE_URL: http://localhost:4008
 
   # ── Node.js services (matrix) ─────────────────────────────────────────────────
   node-services:
@@ -59,6 +60,7 @@ jobs:
           - helpdesk-service
           - sync-service
           - credentials-service
+          - media-service
     defaults:
       run:
         working-directory: services/${{ matrix.service }}
@@ -112,6 +114,7 @@ jobs:
           - auth-service
           - lms-service
           - credentials-service
+          - media-service
     defaults:
       run:
         working-directory: services/${{ matrix.service }}
@@ -161,6 +164,9 @@ jobs:
             target: runner
           - name: credentials-service
             context: services/credentials-service
+            target: production
+          - name: media-service
+            context: services/media-service
             target: production
     steps:
       - uses: actions/checkout@v4

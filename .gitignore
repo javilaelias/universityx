@@ -55,6 +55,8 @@ htmlcov/
 
 # ── Builds ─────────────────────────────────────────────────────────────────────
 android/app/schemas/
+services/media-service/data/
+services/media-service/.test-media/
 
 # ── PWA (generados por @ducanh2912/next-pwa en build time) ────────────────────
 web/public/sw.js

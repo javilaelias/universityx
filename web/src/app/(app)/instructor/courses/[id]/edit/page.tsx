@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, Eye, EyeOff, Loader2, Plus, Trash2, Edit2, Check, X,
   ChevronDown, ChevronRight, Video, FileText, HelpCircle, ClipboardList,
-  Radio, Save,
+  Radio, Save, AlertTriangle,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Suspense } from 'react';
@@ -63,6 +63,101 @@ const CONTENT_LABELS: Record<string, string> = {
   video: 'Video', document: 'Documento', quiz: 'Quiz',
   assignment: 'Tarea', live_session: 'Clase en vivo',
 };
+
+// ── VideoUploader ─────────────────────────────────────────────────────────────
+// Sube un video a media-service (FFmpeg + HLS) y hace polling hasta que termina
+// de transcodificar, autocompletando content_url y duration_seconds.
+
+type UploadState = 'idle' | 'uploading' | 'processing' | 'completed' | 'failed';
+
+function VideoUploader({ onUploaded }: { onUploaded: (hlsUrl: string, durationSeconds: number) => void }) {
+  const [state, setState] = useState<UploadState>('idle');
+  const [error, setError] = useState('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  function pollStatus(id: string) {
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts += 1;
+      if (attempts > 200) { // ~10 min a 3s por intento
+        if (pollRef.current) clearInterval(pollRef.current);
+        setState('failed');
+        setError('Tiempo de espera agotado procesando el video.');
+        return;
+      }
+      try {
+        const res  = await fetch(`/api/media/${id}/status`);
+        const data = await res.json();
+        if (data.status === 'completed') {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setState('completed');
+          onUploaded(data.hlsUrl, data.durationSeconds ?? 0);
+        } else if (data.status === 'failed') {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setState('failed');
+          setError(data.errorMessage ?? 'La transcodificación falló.');
+        }
+      } catch {
+        // red intermitente — se reintenta en el próximo tick
+      }
+    }, 3000);
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setState('uploading');
+    setError('');
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res  = await fetch('/api/media/upload', { method: 'POST', body });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error al subir el video');
+      setState('processing');
+      pollStatus(data.id);
+    } catch (err) {
+      setState('failed');
+      setError(err instanceof Error ? err.message : 'Error al subir el video');
+    }
+  }
+
+  return (
+    <div className="col-span-2 space-y-1">
+      <label className="mb-1 block text-xs text-[var(--muted)]">
+        O sube un archivo de video (se transcodifica a HLS automáticamente)
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="file"
+          accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+          onChange={handleFile}
+          disabled={state === 'uploading' || state === 'processing'}
+          className="input flex-1 text-sm file:mr-2 file:rounded-md file:border-0 file:bg-brand-100 file:px-2 file:py-1 file:text-xs file:font-medium file:text-brand-700 dark:file:bg-brand-900/40 dark:file:text-brand-300"
+        />
+        {(state === 'uploading' || state === 'processing') && (
+          <span className="flex shrink-0 items-center gap-1 text-xs text-[var(--muted)]">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            {state === 'uploading' ? 'Subiendo…' : 'Procesando…'}
+          </span>
+        )}
+        {state === 'completed' && (
+          <span className="flex shrink-0 items-center gap-1 text-xs text-brand-600">
+            <Check className="h-3.5 w-3.5" /> Listo
+          </span>
+        )}
+      </div>
+      {state === 'failed' && (
+        <p className="flex items-center gap-1 text-xs text-red-500">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // ── ContentRow ────────────────────────────────────────────────────────────────
 
@@ -136,6 +231,13 @@ function ContentRow({
             <label className="mb-1 block text-xs text-[var(--muted)]">URL del contenido</label>
             <input value={form.content_url} onChange={e => setForm(f => ({...f, content_url: e.target.value}))} className="input text-sm" placeholder="https://…" />
           </div>
+          {form.type === 'video' && (
+            <VideoUploader
+              onUploaded={(hlsUrl, durationSeconds) => setForm(f => ({
+                ...f, content_url: hlsUrl, duration_seconds: durationSeconds.toString(),
+              }))}
+            />
+          )}
           <div>
             <label className="mb-1 block text-xs text-[var(--muted)]">Duración (segundos)</label>
             <input type="number" min="0" value={form.duration_seconds} onChange={e => setForm(f => ({...f, duration_seconds: e.target.value}))} className="input text-sm" placeholder="0" />
@@ -226,6 +328,13 @@ function AddContentForm({
         <div className="col-span-2">
           <input value={form.content_url} onChange={e => setForm(f => ({...f, content_url: e.target.value}))} placeholder="URL del contenido (opcional)" className="input text-sm" />
         </div>
+        {form.type === 'video' && (
+          <VideoUploader
+            onUploaded={(hlsUrl, durationSeconds) => setForm(f => ({
+              ...f, content_url: hlsUrl, duration_seconds: durationSeconds.toString(),
+            }))}
+          />
+        )}
       </div>
       <div className="flex gap-2">
         <button onClick={onCancel} className="btn-ghost flex flex-1 items-center justify-center gap-1 border border-[var(--border)] text-sm">
