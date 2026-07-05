@@ -50,7 +50,9 @@ export async function findCourses(opts: {
   return { courses: rows, total: parseInt(countResult.rows[0]?.total ?? '0') };
 }
 
-export async function findCourseById(id: string) {
+export async function findCourseById(
+  id: string
+): Promise<(Course & { instructor_name: string; instructor_avatar: string | null }) | null> {
   const { rows } = await query<Course & { instructor_name: string; instructor_avatar: string | null }>(
     `SELECT c.*, u.full_name AS instructor_name, u.avatar_url AS instructor_avatar
      FROM   courses c
