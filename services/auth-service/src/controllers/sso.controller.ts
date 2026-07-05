@@ -156,8 +156,8 @@ export async function samlInit(req: Request, res: Response, next: NextFunction) 
       return;
     }
     const relay = (req.query.institution as string) ?? '';
-    const { context: url } = await buildSaml().getAuthorizeUrlAsync(relay, req.headers.host, {});
-    res.redirect(url as string);
+    const url = await buildSaml().getAuthorizeUrlAsync(relay, req.headers.host, {});
+    res.redirect(url);
   } catch (err) {
     next(err);
   }
