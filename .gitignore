@@ -65,3 +65,6 @@ web/public/workbox-*.js
 web/public/workbox-*.js.map
 web/public/swe-worker-*.js
 web/public/swe-worker-*.js.map
+
+# build cache (agregado por respaldo masivo)
+.vite/
