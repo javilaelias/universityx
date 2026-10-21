@@ -13,6 +13,8 @@ const schema = z.object({
   SMTP_USER:    z.string().default(''),
   SMTP_PASS:    z.string().default(''),
   SMTP_FROM:    z.string().default('Universidad X <no-reply@universidadx.com>'),
+  // URL pública de la web: el enlace de reset de contraseña solo puede apuntar ahí
+  WEB_BASE_URL: z.string().url().default('http://localhost:3000'),
 });
 
 export const env = schema.parse(process.env);

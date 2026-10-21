@@ -15,6 +15,7 @@
 - **Despliegue:** `docs/06-despliegue.md` (VPS); `docker-compose.staging.yml` toma secretos solo del `.env` y falla si falta uno; `.env.example` completo (2026-10-21).
 - **Respaldos:** `scripts/backup.sh` (pg_dump + mongodump, rotación N días, cron) y `scripts/restore.sh`; backup → restore probado en local (guía §7, 2026-10-21).
 - **Email:** notification-service envía por SMTP si hay `SMTP_HOST` (si falta o es `console`, al log); plantillas ES/EN (matrícula, ticket, certificado emitido, quiz, sesión) con `locale` opcional en `/trigger`. Falta que lms y credentials llamen a `/trigger` (2026-10-21).
+- **Recuperar contraseña:** `POST /auth/forgot-password` (202 genérico, límite 3/h por email) y `/auth/reset-password` (token un solo uso, SHA-256 en BD, 30 min, revoca sesiones); páginas `/forgot-password` y `/reset-password`; migración 008 manual en BD existente (2026-10-21).
 - **Calidad:** Vitest en auth, lms, credentials, media, notification; CI/CD GitHub Actions (ci, cd, release).
 
 ## Pendientes v1.0
@@ -23,7 +24,8 @@ Ver `cola-trabajo.md` (driver headless, se corre con `D:\JuvinFactory\juvinciclo
 
 ## Hallazgos
 
-- Sin recuperación de contraseña en auth-service.
+- `authLimiter` (login/register/refresh) cuenta por la IP del contenedor web tras el proxy Next: bucket global (forgot/reset ya reenvían X-Forwarded-For).
+- `/notifications/trigger` sin auth (solo red interna; staging lo publica en 127.0.0.1).
 - notification-service sin FCM; el token del dispositivo no se registra.
 - Sin panel de administración (solo instructor); marca fija en código.
 - Email solo por consola en dev.

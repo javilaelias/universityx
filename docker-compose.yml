@@ -135,6 +135,7 @@ services:
       DATABASE_URL:    postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
       REDIS_URL:       redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
       WEB_BASE_URL:    ${NEXTAUTH_URL:-http://localhost:3000}
+      NOTIFICATION_SERVICE_URL: http://ux_notification:4003
       # SSO SAML (opcional — sin estas vars los endpoints devuelven 503)
       SSO_ENTRY_POINT: ${SSO_ENTRY_POINT:-}
       SSO_ISSUER:      ${SSO_ISSUER:-universidad-x}
@@ -196,6 +197,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
       REDIS_URL:    redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
+      WEB_BASE_URL: ${NEXTAUTH_URL:-http://localhost:3000}
     ports:
       - "4003:4003"
     depends_on:

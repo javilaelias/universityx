@@ -50,7 +50,9 @@ function LoginContent() {
 
   const registeredMsg = params.get('registered') === '1'
     ? t('login.registered')
-    : null;
+    : params.get('reset') === '1'
+      ? t('login.reset_done')
+      : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,7 +115,7 @@ function LoginContent() {
               autoFocus
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="tu@correo.com"
+              placeholder={t('login.email_ph')}
               className="input"
             />
           </div>
@@ -152,6 +154,9 @@ function LoginContent() {
             <label htmlFor="rememberMe" className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
               {t('login.remember')}
             </label>
+            <Link href="/forgot-password" className="ml-auto text-sm font-medium text-brand-600 hover:text-brand-700">
+              {t('login.forgot')}
+            </Link>
           </div>
 
           {error && (

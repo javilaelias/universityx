@@ -17,6 +17,10 @@ import {
   samlInit,
   samlCallback,
 } from '../controllers/sso.controller';
+import {
+  forgotPassword, forgotPasswordSchema,
+  resetPassword,  resetPasswordSchema,
+} from '../controllers/password-reset.controller';
 
 export const authRoutes = Router();
 
@@ -27,6 +31,17 @@ const authLimiter = rateLimit({
   standardHeaders:   true,
   legacyHeaders:     false,
   message:           { error: 'Demasiados intentos. Espera 15 minutos.' },
+  skip: (req) => req.app.get('env') === 'test',
+});
+
+// Límite propio para recuperar contraseña: no comparte contador con login (detrás del proxy
+// de la web todas las peticiones llegan con la misma IP). El control fino es por email (Redis).
+const passwordLimiter = rateLimit({
+  windowMs:        15 * 60 * 1000,
+  max:             30,
+  standardHeaders: true,
+  legacyHeaders:   false,
+  message:         { error: 'Demasiados intentos. Espera 15 minutos.' },
   skip: (req) => req.app.get('env') === 'test',
 });
 
@@ -42,6 +57,8 @@ authRoutes.post('/register', authLimiter, validate(registerSchema), register);
 authRoutes.post('/login',    authLimiter, validate(loginSchema),    login);
 authRoutes.post('/refresh',  authLimiter, validate(refreshSchema),  refresh);
 authRoutes.post('/logout',               validate(refreshSchema),  logout);
+authRoutes.post('/forgot-password', passwordLimiter, validate(forgotPasswordSchema), forgotPassword);
+authRoutes.post('/reset-password',  passwordLimiter, validate(resetPasswordSchema),  resetPassword);
 
 // ── SSO ───────────────────────────────────────────────────────────────────────
 authRoutes.post('/sso/provision',    validate(provisionSchema),    provision);

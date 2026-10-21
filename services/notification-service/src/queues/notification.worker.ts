@@ -4,6 +4,7 @@ import { redisConnection }  from '../config/redis';
 import { env }              from '../config/env';
 import { buildTemplate }    from '../templates/email.templates';
 import { createMailTransport, isConsoleMode } from '../mail/transport';
+import { isEmailOnly, consoleLogView } from './events';
 import type { NotificationJob } from './index';
 
 const transporter = createMailTransport(env);
@@ -17,8 +18,9 @@ export function startNotificationWorker() {
       const template = buildTemplate(event, data, locale);
 
       // 1. Store in-app notification — una sola vez: si falla el SMTP, el reintento
-      //    no la duplica; si falla el insert, el reintento la vuelve a intentar
-      if (!job.data.inAppStored) {
+      //    no la duplica; si falla el insert, el reintento la vuelve a intentar.
+      //    Los eventos solo-email (secreto en `data`) no se guardan.
+      if (!isEmailOnly(event) && !job.data.inAppStored) {
         await pool.query(
           `INSERT INTO notifications (user_id, type, title, body, data)
            VALUES ($1, $2, $3, $4, $5)`,
@@ -38,7 +40,7 @@ export function startNotificationWorker() {
       if (consoleMode) {
         // jsonTransport serialises the mail as JSON in info.message
         const raw = (info as unknown as { message: string }).message;
-        console.log(`[email:${event}] → ${email}\n`, JSON.parse(raw));
+        console.log(`[email:${event}] → ${email}\n`, consoleLogView(event, JSON.parse(raw), env.NODE_ENV));
       }
     },
     { connection: redisConnection, concurrency: 5 },

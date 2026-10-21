@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { z }                  from 'zod';
 import { pool }               from '../db/postgres';
 import { notificationQueue }  from '../queues';
+import { jobOptionsFor, isAllowedResetUrl } from '../queues/events';
+import { env }                from '../config/env';
 import type { AuthRequest }   from '../middleware/auth';
 
 const triggerSchema = z.object({
@@ -19,8 +21,13 @@ export async function trigger(req: Request, res: Response) {
     res.status(400).json({ message: 'Payload inválido', errors: parsed.error.flatten() });
     return;
   }
+  if (parsed.data.event === 'auth.password_reset'
+      && !isAllowedResetUrl(parsed.data.data.resetUrl, env.WEB_BASE_URL)) {
+    res.status(400).json({ message: 'resetUrl no permitido' });
+    return;
+  }
   // Job name is fixed; event type lives in the job data
-  await notificationQueue.add('send', parsed.data);
+  await notificationQueue.add('send', parsed.data, jobOptionsFor(parsed.data.event));
   res.status(202).json({ queued: true });
 }
 

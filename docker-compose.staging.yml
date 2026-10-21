@@ -62,6 +62,7 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?falta JWT_REFRESH_SECRET (min 32 caracteres)}
       ALLOWED_ORIGINS:    *origin
       WEB_BASE_URL:       *origin
+      NOTIFICATION_SERVICE_URL: http://ux_notification:4003
 
   lms-service:
     build: !reset null
@@ -90,6 +91,7 @@ services:
       SMTP_USER:    ${SMTP_USER:-}
       SMTP_PASS:    ${SMTP_PASS:-}
       SMTP_FROM:    ${SMTP_FROM:-Universidad X <no-reply@universidadx.com>}
+      WEB_BASE_URL: *origin
 
   helpdesk-service:
     build: !reset null

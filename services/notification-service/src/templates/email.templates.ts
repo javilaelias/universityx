@@ -5,7 +5,8 @@ export type NotificationEvent =
   | 'ticket.created'
   | 'ticket.reply'
   | 'live_session.reminder'
-  | 'certificate.issued';
+  | 'certificate.issued'
+  | 'auth.password_reset';
 
 export type Locale = 'es' | 'en';
 export const LOCALES = ['es', 'en'] as const;
@@ -76,6 +77,11 @@ const TEMPLATES: Record<Locale, Record<NotificationEvent, Builder>> = {
       html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>Completaste <strong>${escapeHtml(d.courseTitle)}</strong> y tu certificado fue emitido. ¡Felicidades!</p>${link(safeUrl(d.certificateUrl), 'Ver certificado')}`,
       inApp:   { title: 'Certificado emitido', body: `Tu certificado de "${text(d.courseTitle)}" está disponible` },
     }),
+    'auth.password_reset': d => ({
+      subject: 'Restablece tu contraseña de Universidad X',
+      html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>Recibimos una solicitud para restablecer tu contraseña. El enlace vence en ${escapeHtml(d.expiresMinutes)} minutos y sirve una sola vez.</p>${link(safeUrl(d.resetUrl), 'Restablecer contraseña')}<p>Si no fuiste tú, ignora este correo: tu contraseña no cambia.</p>`,
+      inApp:   { title: 'Restablecer contraseña', body: 'Revisa tu correo' },
+    }),
   },
   en: {
     'enrollment.confirmed': d => ({
@@ -112,6 +118,11 @@ const TEMPLATES: Record<Locale, Record<NotificationEvent, Builder>> = {
       subject: `Your certificate for "${text(d.courseTitle)}" is ready`,
       html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>You completed <strong>${escapeHtml(d.courseTitle)}</strong> and your certificate has been issued. Congratulations!</p>${link(safeUrl(d.certificateUrl), 'View certificate')}`,
       inApp:   { title: 'Certificate issued', body: `Your certificate for "${text(d.courseTitle)}" is available` },
+    }),
+    'auth.password_reset': d => ({
+      subject: 'Reset your Universidad X password',
+      html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>We received a request to reset your password. The link expires in ${escapeHtml(d.expiresMinutes)} minutes and works only once.</p>${link(safeUrl(d.resetUrl), 'Reset password')}<p>If this wasn't you, ignore this email: your password stays the same.</p>`,
+      inApp:   { title: 'Reset password', body: 'Check your email' },
     }),
   },
 };

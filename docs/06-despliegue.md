@@ -90,6 +90,18 @@ Rollback: el mismo comando con el `IMAGE_TAG` anterior (fijarlo en `.env` para q
 **Nunca** `docker compose down -v`: borra los volúmenes (todos los datos). Las migraciones no se revierten
 solas: respaldar antes de actualizar.
 
+**Migraciones nuevas en una BD existente.** `infra/migrations/*.sql` solo corre en el primer arranque
+(volumen vacío). Las que lleguen después se aplican a mano; son idempotentes:
+
+```bash
+dcs exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   < infra/migrations/008-password-reset.sql
+```
+
+**Recuperar contraseña (008).** `POST /auth/forgot-password` arma el enlace con `WEB_BASE_URL` (obligatoria
+en production; staging usa `NEXTAUTH_URL`) y lo manda por notification-service. Si notification-service está
+caído, el correo se pierde (queda solo un error en el log de auth): el usuario lo vuelve a pedir. Tras el
+reset se revocan los refresh tokens; un access token ya emitido sigue válido hasta 15 min (riesgo aceptado).
+
 ## 7. Respaldos y restauración
 
 `scripts/backup.sh` respalda PostgreSQL (`pg_dump -Fc`) y MongoDB (`mongodump --archive --gzip`) en `backups/`

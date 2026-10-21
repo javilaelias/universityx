@@ -48,3 +48,19 @@ export async function revokeAllUserTokens(userId: string): Promise<void> {
   const keys = await getRedis().keys(`rt:${userId}:*`);
   if (keys.length > 0) await getRedis().del(keys);
 }
+
+// ── Límite de solicitudes de reset por email ─────────────────────────────────
+// Key: `pwreset:<sha256(email)>`  Value: contador  TTL: 1 h desde la primera
+
+const RESET_WINDOW_SECONDS = 60 * 60;
+
+export async function countResetRequest(emailHash: string): Promise<number> {
+  const key = `pwreset:${emailHash}`;
+  // SET NX EX crea la clave ya con TTL: el contador nunca queda sin vencimiento.
+  const [, count] = await getRedis()
+    .multi()
+    .set(key, '0', { EX: RESET_WINDOW_SECONDS, NX: true })
+    .incr(key)
+    .exec();
+  return Number(count);
+}

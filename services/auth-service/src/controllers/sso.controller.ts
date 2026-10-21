@@ -5,7 +5,7 @@ import { SAML, type SamlConfig } from '@node-saml/node-saml';
 import { query } from '../db/postgres';
 import { getRedis, storeRefreshToken } from '../db/redis';
 import { generateTokenPair } from '../services/jwt.service';
-import { env } from '../config/env';
+import { env, webBaseUrl } from '../config/env';
 import type { User } from '../types/auth.types';
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ export async function samlInit(req: Request, res: Response, next: NextFunction) 
 // ── POST /auth/sso/callback  (SAML ACS — recibe SAMLResponse del IdP) ────────
 
 export async function samlCallback(req: Request, res: Response, next: NextFunction) {
-  const webBase = env.WEB_BASE_URL ?? env.ALLOWED_ORIGINS.split(',')[0].trim();
+  const webBase = webBaseUrl();
 
   try {
     if (!isSamlConfigured()) {
