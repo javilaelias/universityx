@@ -68,3 +68,6 @@ web/public/swe-worker-*.js.map
 
 # build cache (agregado por respaldo masivo)
 .vite/
+
+# ── Respaldos (scripts/backup.sh) ────────────────────────────────────────────
+backups/

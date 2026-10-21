@@ -90,15 +90,41 @@ Rollback: el mismo comando con el `IMAGE_TAG` anterior (fijarlo en `.env` para q
 **Nunca** `docker compose down -v`: borra los volúmenes (todos los datos). Las migraciones no se revierten
 solas: respaldar antes de actualizar.
 
-## 7. Respaldo mínimo
+## 7. Respaldos y restauración
+
+`scripts/backup.sh` respalda PostgreSQL (`pg_dump -Fc`) y MongoDB (`mongodump --archive --gzip`) en `backups/`
+(ignorada por git, permisos `600`) y borra los de más de `BACKUP_RETENTION_DAYS` días (default 7). Usa las
+credenciales de cada contenedor: el `.env` no se exporta ni queda en el crontab. Si falla un paso, sale con
+código 1 y no rota; ese sello queda incompleto (sin el archivo de Mongo) y `restore.sh` lo rechaza.
 
 ```bash
-dcs exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > backup-$(date +%F).sql.gz
-dcs exec -T mongodb mongodump --archive --gzip -u "$MONGO_USER" -p "$MONGO_PASSWORD" --authenticationDatabase admin > mongo-$(date +%F).gz
+export COMPOSE_FILE=docker-compose.yml:docker-compose.staging.yml   # en staging
+scripts/backup.sh          # → backups/ux-pg-<sello>.dump + backups/ux-mongo-<sello>.archive.gz
 ```
 
-(Exportar antes las variables del `.env` en la shell, p. ej. `set -a; . ./.env; set +a`.) Los videos
-procesados están en el volumen `ux_media_data`. Guardar los respaldos fuera del VPS.
+Programarlo (diario a las 03:00, `crontab -e` del usuario que corre Docker):
+
+```cron
+0 3 * * * cd /opt/universidadx && COMPOSE_FILE=docker-compose.yml:docker-compose.staging.yml BACKUP_RETENTION_DAYS=14 scripts/backup.sh >> "$HOME/ux-backup.log" 2>&1
+```
+
+Restaurar (**destructivo**: reemplaza las tablas y colecciones respaldadas; lo creado después del respaldo y que
+no estaba en él queda; los usuarios de `admin` de MongoDB no se tocan). Con la app sin tráfico:
+
+```bash
+scripts/restore.sh                         # lista los últimos respaldos
+scripts/restore.sh 2026-10-21_030000       # pide escribir RESTAURAR (o agregar --yes)
+dcs restart auth-service lms-service       # y el resto de servicios que tengan conexiones abiertas
+```
+
+Probado en local (2026-10-21) con una pila descartable: datos sembrados → backup → tablas y colecciones borradas →
+restore → datos recuperados; restore repetido sin errores; rotación de un archivo de 10 días; backup con MongoDB
+caído → código 1 sin archivo de Mongo ni rotación. **No** probar sobre `docker-compose.yml` con otro nombre de
+proyecto: sus volúmenes tienen nombre fijo (`ux_postgres_data`…) y serían los de trabajo.
+
+Fuera de los scripts: copiar `backups/` fuera del VPS (p. ej. `rclone copy` o `rsync` a otro host) y respaldar el
+volumen de videos procesados `ux_media_data` (`docker run --rm -v ux_media_data:/d -v "$PWD/backups":/b alpine
+tar czf /b/media-$(date +%F).tgz -C /d .`).
 
 ## 8. Checklist de secretos
 
