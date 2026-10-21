@@ -27,7 +27,10 @@ Reglas del proyecto para todos los ítems:
       docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file <vacío> config → exit=1 "falta POSTGRES_USER"
       mismo comando con env de prueba → exit=0; 0 valores de desarrollo; postgres/mongodb/redis sin puertos; resto en 127.0.0.1
       git ls-files | grep .env → solo .env.example; git log --all --diff-filter=A -- '.env*' → solo .env.example
-- [ ] 3. Respaldos: script programable de `pg_dump` + `mongodump` con rotación (N días) y script de restauración; probar backup → restore en local y documentarlo en la guía de despliegue. Mecánico.
+- [x] 3. Respaldos: script programable de `pg_dump` + `mongodump` con rotación (N días) y script de restauración; probar backup → restore en local y documentarlo en la guía de despliegue. Mecánico. - cerrado 2026-10-21: respaldos con `scripts/backup.sh` (pg_dump + mongodump, rotación N días, cron) y `scripts/restore.sh`, prueba backup → restore en una pila de prueba aparte y guía §7 actualizada
+      backup.sh → rc=0; rotó un archivo de 10 días y conservó uno de 2
+      restore.sh <sello> --yes → rc=0; cursos=2, chat=2 tras borrarlos
+      backup con mongodb detenido → rc=1, sin rotación
 - [ ] 4. Email real: notification-service envía por SMTP (nodemailer) cuando hay config SMTP y cae a consola si no; plantillas ES/EN para matrícula, ticket y certificado emitido. Mecánico.
 - [ ] 5. Recuperar contraseña [requiere concilio]: `POST /auth/forgot-password` y `POST /auth/reset-password` con token de un solo uso, hash en BD y expiración; páginas web `/forgot-password` y `/reset-password`; respuesta genérica (no revela si el email existe) y rate limit. Depende del ítem 4. `/security-review`.
 - [ ] 6. Endurecer auth para datos reales [requiere concilio]: política de contraseñas, bloqueo temporal por intentos, revisión de expiración/rotación de JWT y refresh, cookies/CORS de producción y headers de seguridad en la web. `/security-review`.
