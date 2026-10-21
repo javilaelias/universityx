@@ -12,6 +12,7 @@
   `/verify/[id]`, PWA, modo oscuro, i18n ES/EN.
 - **Android (Kotlin):** login + biometría, offline (Room + SyncWorker), descargas, ExoPlayer, FCM (solo cliente).
 - **Docs:** `README.md` (arranque, servicios y puertos); `PROGRESS.md` congelado como histórico, sin credenciales (2026-10-21).
+- **Despliegue:** `docs/06-despliegue.md` (VPS); `docker-compose.staging.yml` toma secretos solo del `.env` y falla si falta uno; `.env.example` completo (2026-10-21).
 - **Calidad:** Vitest en auth, lms, credentials, media; CI/CD GitHub Actions (ci, cd, release).
 
 ## Pendientes v1.0
@@ -23,7 +24,8 @@ Ver `cola-trabajo.md` (driver headless, se corre con `D:\JuvinFactory\juvinciclo
 - Sin recuperación de contraseña en auth-service.
 - notification-service sin FCM; el token del dispositivo no se registra.
 - Sin panel de administración (solo instructor); marca fija en código.
-- Email solo por consola en dev; sin respaldos automáticos ni guía de despliegue.
+- Email solo por consola en dev; sin respaldos automáticos.
+- `cd.yml` arma `.env.staging` en el runner y no lo copia al VPS (manda el `.env` del servidor).
 - SSO SAML/OIDC: stub, sin IdP real.
 
 ## Presentaciones

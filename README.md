@@ -44,7 +44,7 @@ Puertos por defecto de `docker-compose.yml`; los marcados con `*` se cambian en 
 - `pgadmin` — http://localhost:5050\* · `mongo-express` — http://localhost:8082\*
 
 Usuarios y contraseñas de las bases y paneles: ver `.env.example` (los valores por defecto son solo para
-desarrollo local; en un piloto real se cambian todos).
+desarrollo local; en un piloto real se cambian todos: ver [`docs/06-despliegue.md`](docs/06-despliegue.md)).
 
 ## Tests
 
@@ -58,4 +58,5 @@ CI en `.github/workflows/` (`ci.yml`, `cd.yml`, `release.yml`).
 - [`docs/03-ux-flow-offline.md`](docs/03-ux-flow-offline.md) — experiencia offline.
 - [`docs/04-roadmap.md`](docs/04-roadmap.md) — roadmap.
 - [`docs/05-manual-usuario.md`](docs/05-manual-usuario.md) — manual de usuario.
+- [`docs/06-despliegue.md`](docs/06-despliegue.md) — despliegue en un VPS (`docker-compose.staging.yml`, secretos por `.env`).
 - [`PROGRESS.md`](PROGRESS.md) — registro histórico hasta 2026-06-17 (congelado).

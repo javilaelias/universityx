@@ -44,6 +44,9 @@ jobs:
           - name: credentials-service
             context: services/credentials-service
             target: production
+          - name: media-service
+            context: services/media-service
+            target: production
     steps:
       - uses: actions/checkout@v4
 

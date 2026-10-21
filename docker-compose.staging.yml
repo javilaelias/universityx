@@ -1,41 +1,156 @@
-# Staging overrides — used only in CD deploy
-# Replaces build: with pre-built images from GHCR
-# Usage: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+# Staging / VPS overrides — imágenes pre-construidas de GHCR y secretos SOLO por variables de entorno
+# Uso:   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+# Guía:  docs/06-despliegue.md
+#
+# - Sin env_file por servicio (services/*/.env es solo para desarrollo): todo sale del .env raíz del VPS.
+# - ${VAR:?} hace fallar `docker compose config/up` si falta un secreto, en vez de arrancar con los
+#   valores de desarrollo que trae docker-compose.yml.
+# - Bases de datos sin puertos publicados; web y microservicios solo en 127.0.0.1 (detrás del reverse proxy;
+#   Docker publica puertos saltándose UFW); pgAdmin y Mongo Express solo con `--profile tools` y en 127.0.0.1.
 
-x-image: &registry ${REGISTRY:-ghcr.io/universidad-x}
-x-tag:   &tag      ${IMAGE_TAG:-latest}
+x-pg-url:    &pg_url    "postgresql://${POSTGRES_USER:?falta POSTGRES_USER}:${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}@ux_postgres:5432/${POSTGRES_DB:?falta POSTGRES_DB}"
+x-redis-url: &redis_url "redis://:${REDIS_PASSWORD:?falta REDIS_PASSWORD}@ux_redis:6379"
+x-jwt:       &jwt       "${JWT_SECRET:?falta JWT_SECRET (min 32 caracteres)}"
+x-origin:    &origin    "${NEXTAUTH_URL:?falta NEXTAUTH_URL (URL publica de la web)}"
 
 services:
+  # ── Infraestructura ─────────────────────────────────────────────────────────
+  postgres:
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:?falta POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER:?falta POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+    ports: !reset []
+
+  mongodb:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:?falta MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?falta MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE:      ${MONGO_DB:?falta MONGO_DB}
+    ports: !reset []
+
+  redis:
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?falta REDIS_PASSWORD}
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy noeviction
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?falta REDIS_PASSWORD}", "ping"]
+    ports: !reset []
+
+  pgadmin:
+    profiles: [tools]
+    ports: !override ["127.0.0.1:${PGADMIN_PORT:-5050}:80"]
+
+  mongo-express:
+    profiles: [tools]
+    ports: !override ["127.0.0.1:${ME_PORT:-8082}:8081"]
+
+  # ── Microservicios ──────────────────────────────────────────────────────────
   auth-service:
     build: !reset null
+    ports: !override ["127.0.0.1:4001:4001"]
     image: "${REGISTRY:-ghcr.io/universidad-x}/ux-auth-service:${IMAGE_TAG:-latest}"
+    env_file: !reset []
+    environment:
+      NODE_ENV:           production
+      DATABASE_URL:       *pg_url
+      REDIS_URL:          *redis_url
+      JWT_SECRET:         *jwt
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?falta JWT_REFRESH_SECRET (min 32 caracteres)}
+      ALLOWED_ORIGINS:    *origin
+      WEB_BASE_URL:       *origin
 
   lms-service:
     build: !reset null
+    ports: !override ["127.0.0.1:4002:4002"]
     image: "${REGISTRY:-ghcr.io/universidad-x}/ux-lms-service:${IMAGE_TAG:-latest}"
+    env_file: !reset []
+    environment:
+      NODE_ENV:        production
+      DATABASE_URL:    *pg_url
+      REDIS_URL:       *redis_url
+      JWT_SECRET:      *jwt
+      ALLOWED_ORIGINS: *origin
 
   notification-service:
     build: !reset null
+    ports: !override ["127.0.0.1:4003:4003"]
     image: "${REGISTRY:-ghcr.io/universidad-x}/ux-notification-service:${IMAGE_TAG:-latest}"
+    env_file: !reset []
+    environment:
+      NODE_ENV:     production
+      DATABASE_URL: *pg_url
+      REDIS_URL:    *redis_url
+      JWT_SECRET:   *jwt
+      SMTP_HOST:    ${SMTP_HOST:-console}
+      SMTP_PORT:    ${SMTP_PORT:-587}
+      SMTP_USER:    ${SMTP_USER:-}
+      SMTP_PASS:    ${SMTP_PASS:-}
+      SMTP_FROM:    ${SMTP_FROM:-Universidad X <no-reply@universidadx.com>}
 
   helpdesk-service:
     build: !reset null
+    ports: !override ["127.0.0.1:4004:4004"]
     image: "${REGISTRY:-ghcr.io/universidad-x}/ux-helpdesk-service:${IMAGE_TAG:-latest}"
+    env_file: !reset []
+    environment:
+      NODE_ENV:     production
+      DATABASE_URL: *pg_url
+      JWT_SECRET:   *jwt
 
   sync-service:
     build: !reset null
+    ports: !override ["127.0.0.1:4005:4005"]
     image: "${REGISTRY:-ghcr.io/universidad-x}/ux-sync-service:${IMAGE_TAG:-latest}"
+    env_file: !reset []
+    environment:
+      NODE_ENV:     production
+      DATABASE_URL: *pg_url
+      JWT_SECRET:   *jwt
 
   ai-service:
     build: !reset null
+    ports: !override ["127.0.0.1:4006:4006"]
     image: "${REGISTRY:-ghcr.io/universidad-x}/ux-ai-service:${IMAGE_TAG:-latest}"
+    env_file: !reset []
+    environment:
+      NODE_ENV:     production
+      DATABASE_URL: *pg_url
+      MONGO_URL:    "mongodb://${MONGO_USER:?falta MONGO_USER}:${MONGO_PASSWORD:?falta MONGO_PASSWORD}@ux_mongo:27017/${MONGO_DB:?falta MONGO_DB}?authSource=admin"
+      JWT_SECRET:   *jwt
 
   credentials-service:
     build: !reset null
+    ports: !override ["127.0.0.1:4007:4007"]
     image: "${REGISTRY:-ghcr.io/universidad-x}/ux-credentials-service:${IMAGE_TAG:-latest}"
+    env_file: !reset []
+    environment:
+      NODE_ENV:     production
+      DATABASE_URL: *pg_url
+      JWT_SECRET:   *jwt
+      ISSUER_URL:   ${ISSUER_URL:-https://universidadx.com}
+      ISSUER_NAME:  ${ISSUER_NAME:-Universidad X}
 
+  media-service:
+    build: !reset null
+    ports: !override ["127.0.0.1:${MEDIA_PORT:-4008}:4008"]
+    image: "${REGISTRY:-ghcr.io/universidad-x}/ux-media-service:${IMAGE_TAG:-latest}"
+    env_file: !reset []
+    environment:
+      NODE_ENV:        production
+      DATABASE_URL:    *pg_url
+      REDIS_URL:       *redis_url
+      JWT_SECRET:      *jwt
+      ALLOWED_ORIGINS: *origin
+
+  # ── Frontend ────────────────────────────────────────────────────────────────
   web:
     build: !reset null
+    ports: !override ["127.0.0.1:${WEB_PORT:-3000}:3000"]
     image: "${REGISTRY:-ghcr.io/universidad-x}/ux-web:${IMAGE_TAG:-latest}"
     environment:
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://staging.universidadx.com}
+      NEXTAUTH_URL:    *origin
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?falta NEXTAUTH_SECRET (min 32 caracteres)}
