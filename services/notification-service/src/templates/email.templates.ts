@@ -4,7 +4,12 @@ export type NotificationEvent =
   | 'quiz.failed'
   | 'ticket.created'
   | 'ticket.reply'
-  | 'live_session.reminder';
+  | 'live_session.reminder'
+  | 'certificate.issued';
+
+export type Locale = 'es' | 'en';
+export const LOCALES = ['es', 'en'] as const;
+export const DEFAULT_LOCALE: Locale = 'es';
 
 interface EmailTemplate {
   subject: string;
@@ -12,48 +17,122 @@ interface EmailTemplate {
   inApp:   { title: string; body: string };
 }
 
-export function buildTemplate(event: NotificationEvent, data: Record<string, unknown>): EmailTemplate {
-  switch (event) {
-    case 'enrollment.confirmed':
-      return {
-        subject: `¡Bienvenido al curso "${data.courseTitle}"!`,
-        html:    `<p>Hola ${data.userName},</p><p>Tu matrícula en <strong>${data.courseTitle}</strong> fue confirmada. ¡Empieza a aprender ahora!</p>`,
-        inApp:   { title: '¡Matriculado!', body: `Bienvenido a "${data.courseTitle}"` },
-      };
+type Data    = Record<string, unknown>;
+type Builder = (d: Data) => EmailTemplate;
 
-    case 'quiz.passed':
-      return {
-        subject: `¡Aprobaste el quiz "${data.quizTitle}" con ${data.score}%!`,
-        html:    `<p>Hola ${data.userName},</p><p>Obtuviste <strong>${data.score}%</strong> en el quiz "<strong>${data.quizTitle}</strong>". ¡Felicidades!</p>`,
-        inApp:   { title: `Quiz aprobado — ${data.score}%`, body: `Pasaste "${data.quizTitle}"` },
-      };
+const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
-    case 'quiz.failed':
-      return {
-        subject: `Quiz "${data.quizTitle}": sigue intentando`,
-        html:    `<p>Hola ${data.userName},</p><p>Obtuviste <strong>${data.score}%</strong>. El puntaje mínimo es ${data.passingScore}%. Puedes intentarlo de nuevo.</p>`,
-        inApp:   { title: 'Quiz: sigue intentando', body: `Obtuviste ${data.score}% en "${data.quizTitle}"` },
-      };
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ESCAPES[ch]);
+}
 
-    case 'ticket.created':
-      return {
-        subject: `Ticket #${data.ticketId} recibido — ${data.subject}`,
-        html:    `<p>Hola ${data.userName},</p><p>Tu ticket de soporte "<strong>${data.subject}</strong>" fue recibido. Te responderemos pronto.</p>`,
-        inApp:   { title: 'Ticket de soporte creado', body: `"${data.subject}" está siendo revisado` },
-      };
+// Solo enlaces http(s); cualquier otro esquema (javascript:, data:) se descarta.
+function safeUrl(value: unknown): string {
+  const url = String(value ?? '').trim();
+  return /^https?:\/\//i.test(url) ? escapeHtml(url) : '';
+}
 
-    case 'ticket.reply':
-      return {
-        subject: `Nueva respuesta en tu ticket: ${data.subject}`,
-        html:    `<p>Hola ${data.userName},</p><p>El equipo de soporte respondió tu ticket "<strong>${data.subject}</strong>".</p>`,
-        inApp:   { title: 'Respuesta a tu ticket', body: `Tienes una nueva respuesta en "${data.subject}"` },
-      };
+// Asunto e in-app son texto plano (no HTML): sin escape, pero sin saltos de línea.
+function text(value: unknown): string {
+  return String(value ?? '').replace(/[\r\n]+/g, ' ');
+}
 
-    case 'live_session.reminder':
-      return {
-        subject: `Recordatorio: sesión en vivo "${data.sessionTitle}" en 30 min`,
-        html:    `<p>Hola ${data.userName},</p><p>La sesión "<strong>${data.sessionTitle}</strong>" empieza en 30 minutos.</p><p><a href="${data.meetingUrl}">Únete aquí</a></p>`,
-        inApp:   { title: 'Sesión en vivo en 30 min', body: `"${data.sessionTitle}" comienza pronto` },
-      };
-  }
+const link = (url: string, label: string) => (url ? `<p><a href="${url}">${label}</a></p>` : '');
+
+const TEMPLATES: Record<Locale, Record<NotificationEvent, Builder>> = {
+  es: {
+    'enrollment.confirmed': d => ({
+      subject: `¡Bienvenido al curso "${text(d.courseTitle)}"!`,
+      html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>Tu matrícula en <strong>${escapeHtml(d.courseTitle)}</strong> fue confirmada. ¡Empieza a aprender ahora!</p>`,
+      inApp:   { title: '¡Matriculado!', body: `Bienvenido a "${text(d.courseTitle)}"` },
+    }),
+    'quiz.passed': d => ({
+      subject: `¡Aprobaste el quiz "${text(d.quizTitle)}" con ${text(d.score)}%!`,
+      html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>Obtuviste <strong>${escapeHtml(d.score)}%</strong> en el quiz "<strong>${escapeHtml(d.quizTitle)}</strong>". ¡Felicidades!</p>`,
+      inApp:   { title: `Quiz aprobado — ${text(d.score)}%`, body: `Pasaste "${text(d.quizTitle)}"` },
+    }),
+    'quiz.failed': d => ({
+      subject: `Quiz "${text(d.quizTitle)}": sigue intentando`,
+      html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>Obtuviste <strong>${escapeHtml(d.score)}%</strong>. El puntaje mínimo es ${escapeHtml(d.passingScore)}%. Puedes intentarlo de nuevo.</p>`,
+      inApp:   { title: 'Quiz: sigue intentando', body: `Obtuviste ${text(d.score)}% en "${text(d.quizTitle)}"` },
+    }),
+    'ticket.created': d => ({
+      subject: `Ticket #${text(d.ticketId)} recibido — ${text(d.subject)}`,
+      html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>Tu ticket de soporte "<strong>${escapeHtml(d.subject)}</strong>" fue recibido. Te responderemos pronto.</p>`,
+      inApp:   { title: 'Ticket de soporte creado', body: `"${text(d.subject)}" está siendo revisado` },
+    }),
+    'ticket.reply': d => ({
+      subject: `Nueva respuesta en tu ticket: ${text(d.subject)}`,
+      html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>El equipo de soporte respondió tu ticket "<strong>${escapeHtml(d.subject)}</strong>".</p>`,
+      inApp:   { title: 'Respuesta a tu ticket', body: `Tienes una nueva respuesta en "${text(d.subject)}"` },
+    }),
+    'live_session.reminder': d => ({
+      subject: `Recordatorio: sesión en vivo "${text(d.sessionTitle)}" en 30 min`,
+      html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>La sesión "<strong>${escapeHtml(d.sessionTitle)}</strong>" empieza en 30 minutos.</p>${link(safeUrl(d.meetingUrl), 'Únete aquí')}`,
+      inApp:   { title: 'Sesión en vivo en 30 min', body: `"${text(d.sessionTitle)}" comienza pronto` },
+    }),
+    'certificate.issued': d => ({
+      subject: `Tu certificado de "${text(d.courseTitle)}" está listo`,
+      html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>Completaste <strong>${escapeHtml(d.courseTitle)}</strong> y tu certificado fue emitido. ¡Felicidades!</p>${link(safeUrl(d.certificateUrl), 'Ver certificado')}`,
+      inApp:   { title: 'Certificado emitido', body: `Tu certificado de "${text(d.courseTitle)}" está disponible` },
+    }),
+  },
+  en: {
+    'enrollment.confirmed': d => ({
+      subject: `Welcome to "${text(d.courseTitle)}"!`,
+      html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>Your enrollment in <strong>${escapeHtml(d.courseTitle)}</strong> is confirmed. Start learning now!</p>`,
+      inApp:   { title: 'Enrolled!', body: `Welcome to "${text(d.courseTitle)}"` },
+    }),
+    'quiz.passed': d => ({
+      subject: `You passed "${text(d.quizTitle)}" with ${text(d.score)}%!`,
+      html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>You scored <strong>${escapeHtml(d.score)}%</strong> on the quiz "<strong>${escapeHtml(d.quizTitle)}</strong>". Congratulations!</p>`,
+      inApp:   { title: `Quiz passed — ${text(d.score)}%`, body: `You passed "${text(d.quizTitle)}"` },
+    }),
+    'quiz.failed': d => ({
+      subject: `Quiz "${text(d.quizTitle)}": keep trying`,
+      html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>You scored <strong>${escapeHtml(d.score)}%</strong>. The passing score is ${escapeHtml(d.passingScore)}%. You can try again.</p>`,
+      inApp:   { title: 'Quiz: keep trying', body: `You scored ${text(d.score)}% on "${text(d.quizTitle)}"` },
+    }),
+    'ticket.created': d => ({
+      subject: `Ticket #${text(d.ticketId)} received — ${text(d.subject)}`,
+      html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>We received your support ticket "<strong>${escapeHtml(d.subject)}</strong>". We will get back to you soon.</p>`,
+      inApp:   { title: 'Support ticket created', body: `"${text(d.subject)}" is being reviewed` },
+    }),
+    'ticket.reply': d => ({
+      subject: `New reply on your ticket: ${text(d.subject)}`,
+      html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>The support team replied to your ticket "<strong>${escapeHtml(d.subject)}</strong>".</p>`,
+      inApp:   { title: 'Reply to your ticket', body: `You have a new reply on "${text(d.subject)}"` },
+    }),
+    'live_session.reminder': d => ({
+      subject: `Reminder: live session "${text(d.sessionTitle)}" in 30 min`,
+      html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>The session "<strong>${escapeHtml(d.sessionTitle)}</strong>" starts in 30 minutes.</p>${link(safeUrl(d.meetingUrl), 'Join here')}`,
+      inApp:   { title: 'Live session in 30 min', body: `"${text(d.sessionTitle)}" starts soon` },
+    }),
+    'certificate.issued': d => ({
+      subject: `Your certificate for "${text(d.courseTitle)}" is ready`,
+      html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>You completed <strong>${escapeHtml(d.courseTitle)}</strong> and your certificate has been issued. Congratulations!</p>${link(safeUrl(d.certificateUrl), 'View certificate')}`,
+      inApp:   { title: 'Certificate issued', body: `Your certificate for "${text(d.courseTitle)}" is available` },
+    }),
+  },
+};
+
+const GENERIC: Record<Locale, Builder> = {
+  es: () => ({
+    subject: 'Nueva notificación de Universidad X',
+    html:    '<p>Tienes una nueva notificación en Universidad X.</p>',
+    inApp:   { title: 'Nueva notificación', body: 'Tienes una nueva notificación' },
+  }),
+  en: () => ({
+    subject: 'New notification from Universidad X',
+    html:    '<p>You have a new notification on Universidad X.</p>',
+    inApp:   { title: 'New notification', body: 'You have a new notification' },
+  }),
+};
+
+// Evento desconocido → plantilla genérica; locale desconocido → español.
+export function buildTemplate(event: string, data: Data, locale: string = DEFAULT_LOCALE): EmailTemplate {
+  const lang: Locale = (LOCALES as readonly string[]).includes(locale) ? (locale as Locale) : DEFAULT_LOCALE;
+  const byEvent = TEMPLATES[lang] as Record<string, Builder>;
+  const builder = Object.prototype.hasOwnProperty.call(byEvent, event) ? byEvent[event] : GENERIC[lang];
+  return builder(data);
 }

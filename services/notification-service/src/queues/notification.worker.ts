@@ -1,33 +1,31 @@
 import { Worker }          from 'bullmq';
-import nodemailer           from 'nodemailer';
 import { pool }             from '../db/postgres';
 import { redisConnection }  from '../config/redis';
 import { env }              from '../config/env';
 import { buildTemplate }    from '../templates/email.templates';
+import { createMailTransport, isConsoleMode } from '../mail/transport';
 import type { NotificationJob } from './index';
 
-const transporter = env.SMTP_HOST === 'console'
-  ? nodemailer.createTransport({ jsonTransport: true })
-  : nodemailer.createTransport({
-      host:   env.SMTP_HOST,
-      port:   Number(env.SMTP_PORT),
-      auth:   { user: env.SMTP_USER, pass: env.SMTP_PASS },
-      secure: Number(env.SMTP_PORT) === 465,
-    });
+const transporter = createMailTransport(env);
+const consoleMode = isConsoleMode(env);
 
 export function startNotificationWorker() {
   const worker = new Worker<NotificationJob>(
     'notifications',
     async (job) => {
-      const { event, userId, email, data } = job.data;
-      const template = buildTemplate(event as Parameters<typeof buildTemplate>[0], data);
+      const { event, userId, email, data, locale } = job.data;
+      const template = buildTemplate(event, data, locale);
 
-      // 1. Store in-app notification
-      await pool.query(
-        `INSERT INTO notifications (user_id, type, title, body, data)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [userId, event.replace('.', '_'), template.inApp.title, template.inApp.body, data],
-      );
+      // 1. Store in-app notification — una sola vez: si falla el SMTP, el reintento
+      //    no la duplica; si falla el insert, el reintento la vuelve a intentar
+      if (!job.data.inAppStored) {
+        await pool.query(
+          `INSERT INTO notifications (user_id, type, title, body, data)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [userId, event.replace('.', '_'), template.inApp.title, template.inApp.body, data],
+        );
+        await job.updateData({ ...job.data, inAppStored: true });
+      }
 
       // 2. Send email
       const info = await transporter.sendMail({
@@ -37,7 +35,7 @@ export function startNotificationWorker() {
         html:    template.html,
       });
 
-      if (env.SMTP_HOST === 'console') {
+      if (consoleMode) {
         // jsonTransport serialises the mail as JSON in info.message
         const raw = (info as unknown as { message: string }).message;
         console.log(`[email:${event}] → ${email}\n`, JSON.parse(raw));

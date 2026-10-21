@@ -14,7 +14,8 @@
 - **Docs:** `README.md` (arranque, servicios y puertos); `PROGRESS.md` congelado como histórico, sin credenciales (2026-10-21).
 - **Despliegue:** `docs/06-despliegue.md` (VPS); `docker-compose.staging.yml` toma secretos solo del `.env` y falla si falta uno; `.env.example` completo (2026-10-21).
 - **Respaldos:** `scripts/backup.sh` (pg_dump + mongodump, rotación N días, cron) y `scripts/restore.sh`; backup → restore probado en local (guía §7, 2026-10-21).
-- **Calidad:** Vitest en auth, lms, credentials, media; CI/CD GitHub Actions (ci, cd, release).
+- **Email:** notification-service envía por SMTP si hay `SMTP_HOST` (si falta o es `console`, al log); plantillas ES/EN (matrícula, ticket, certificado emitido, quiz, sesión) con `locale` opcional en `/trigger`. Falta que lms y credentials llamen a `/trigger` (2026-10-21).
+- **Calidad:** Vitest en auth, lms, credentials, media, notification; CI/CD GitHub Actions (ci, cd, release).
 
 ## Pendientes v1.0
 

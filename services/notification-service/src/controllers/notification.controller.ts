@@ -9,6 +9,7 @@ const triggerSchema = z.object({
   userId: z.string().uuid(),
   email:  z.string().email(),
   data:   z.record(z.unknown()).default({}),
+  locale: z.enum(['es', 'en']).default('es').catch('es'),
 });
 
 // POST /notifications/trigger — called internally by other services (no auth)
