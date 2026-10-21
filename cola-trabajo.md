@@ -22,7 +22,7 @@ Reglas del proyecto para todos los ítems:
 - Reutilizar antes de escribir: nodemailer ya está en notification-service; usar librerías OSS (no AGPL).
 - Nunca commitear secretos ni `.env`; los tests existentes (Vitest) deben quedar en verde.
 
-- [ ] 1. Documentación base: README.md (qué es, arranque con START.bat/docker compose, servicios y puertos) y limpieza de PROGRESS.md (quitar credenciales en claro, resolver ítems contradictorios o marcarlo como histórico apuntando a ESTADO_PROYECTO.md). Mecánico.
+- [x] 1. Documentación base: README.md (qué es, arranque con START.bat/docker compose, servicios y puertos) y limpieza de PROGRESS.md (quitar credenciales en claro, resolver ítems contradictorios o marcarlo como histórico apuntando a ESTADO_PROYECTO.md). Mecánico. - cerrado 2026-10-21: README.md base (arranque, servicios y puertos según el compose, aviso de reset) y PROGRESS.md congelado como histórico, sin credenciales ni ítems contradictorios; concilio 2, code-review low sin hallazgos, QA juvinqa aprobada.
 - [ ] 2. Despliegue reproducible: guía `docs/06-despliegue.md` para un VPS con `docker-compose.staging.yml`, `.env.example` completo y sin valores reales, secretos solo por variables de entorno; verificar que ningún secreto quede versionado. Mecánico + `/security-review` (secretos).
 - [ ] 3. Respaldos: script programable de `pg_dump` + `mongodump` con rotación (N días) y script de restauración; probar backup → restore en local y documentarlo en la guía de despliegue. Mecánico.
 - [ ] 4. Email real: notification-service envía por SMTP (nodemailer) cuando hay config SMTP y cae a consola si no; plantillas ES/EN para matrícula, ticket y certificado emitido. Mecánico.
