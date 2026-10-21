@@ -25,3 +25,7 @@ Ver `cola-trabajo.md` (driver headless, se corre con `D:\JuvinFactory\juvinciclo
 - Email solo por consola en dev; sin respaldos automáticos ni guía de despliegue.
 - `PROGRESS.md` tiene credenciales de dev en claro e ítems contradictorios (hecho y pendiente a la vez).
 - SSO SAML/OIDC: stub, sin IdP real.
+
+## Presentaciones
+
+- Presentación de portafolio mvp: omitida (2026-10-21) — el usuario la pidió para el cierre de v1.0.
