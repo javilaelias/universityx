@@ -1,0 +1,13 @@
+{
+    "version":  1,
+    "nombre":  "UniversidadX",
+    "descripcion":  "LMS EdTech offline-first: web Next.js, Android Kotlin y 8 microservicios (cursos, quizzes, certificados, soporte).",
+    "ambito":  "comercial",
+    "fabrica":  "JuvinFactory",
+    "estado_desarrollo":  "mvp",
+    "despliegue":  "local",
+    "maquina_duena":  "DESKTOP-BH05CUG",
+    "replicar":  false,
+    "en_desarrollo":  true,
+    "actualizado":  "2026-10-21T00:00:00.000Z"
+}
