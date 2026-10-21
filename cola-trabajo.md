@@ -31,7 +31,9 @@ Reglas del proyecto para todos los ítems:
       backup.sh → rc=0; rotó un archivo de 10 días y conservó uno de 2
       restore.sh <sello> --yes → rc=0; cursos=2, chat=2 tras borrarlos
       backup con mongodb detenido → rc=1, sin rotación
-- [ ] 4. Email real: notification-service envía por SMTP (nodemailer) cuando hay config SMTP y cae a consola si no; plantillas ES/EN para matrícula, ticket y certificado emitido. Mecánico.
+- [x] 4. Email real: notification-service envía por SMTP (nodemailer) cuando hay config SMTP y cae a consola si no; plantillas ES/EN para matrícula, ticket y certificado emitido. Mecánico. - cerrado 2026-10-21: notification-service envía por SMTP si hay SMTP_HOST (consola si vacío/console); plantillas ES/EN con locale opcional (matrícula, ticket, certificado emitido); escape HTML; in-app idempotente; code-review low (1 corregido, 1 descartado) + security-review 0; juvinqa APROBADO
+      npx tsc --noEmit → exit 0
+      npx vitest run → Tests 13 passed (13)
 - [ ] 5. Recuperar contraseña [requiere concilio]: `POST /auth/forgot-password` y `POST /auth/reset-password` con token de un solo uso, hash en BD y expiración; páginas web `/forgot-password` y `/reset-password`; respuesta genérica (no revela si el email existe) y rate limit. Depende del ítem 4. `/security-review`.
 - [ ] 6. Endurecer auth para datos reales [requiere concilio]: política de contraseñas, bloqueo temporal por intentos, revisión de expiración/rotación de JWT y refresh, cookies/CORS de producción y headers de seguridad en la web. `/security-review`.
 - [ ] 7. Panel de administración mínimo [requiere concilio]: rol admin en web `/admin` — usuarios (listar, crear, cambiar rol, desactivar), todos los cursos (publicar/despublicar) y cola de tickets como staff; endpoints protegidos por rol en los servicios. `/security-review` (API expuesta).
