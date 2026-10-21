@@ -2,6 +2,10 @@
 
 > **Proyecto:** Plataforma EdTech (LMS) — Web (Next.js) + Android (Kotlin)
 > **Última actualización:** 2026-06-17
+>
+> **HISTÓRICO — congelado desde 2026-10-21.** No se actualiza más: el estado vigente, los pendientes y los
+> hallazgos están en [`ESTADO_PROYECTO.md`](ESTADO_PROYECTO.md); el trabajo en curso, en `cola-trabajo.md`.
+> Arranque y puertos: [`README.md`](README.md).
 
 ---
 
@@ -44,11 +48,11 @@
 
 ## 🔄 EN PROGRESO
 
-*(auth-service completado — siguiente: lms-service)*
+*(ver `ESTADO_PROYECTO.md`)*
 
 ---
 
-## ⏳ PENDIENTE
+## ⏳ PENDIENTE (a 2026-06-17; incluye ítems hechos después)
 
 ### Fase 3 — Backend Microservicios
 - [x] **auth-service** — Node.js/Express + JWT + Refresh Tokens + Redis + Rate Limiting ✅
@@ -98,18 +102,9 @@
   - docker-compose.yml: 13 servicios, healthchecks, depends_on, ux_network
   - Redis config fijada: maxmemory-policy noeviction (correcto para BullMQ)
   - ai-service y credentials-service agregados con sus dependencias correctas
-- [ ] **lms-service** — Cursos, módulos, contenido, drip release, quizzes
-  - CRUD de cursos y módulos
-  - Endpoint de descarga de contenido (URLs firmadas S3/GCS)
-  - Lógica de drip content (liberar módulos por fecha)
-- [ ] **sync-service** — Reconciliación offline con idempotency keys
-  - POST /sync/batch — recibe array de eventos offline
-  - Resolución de conflictos (last-write-wins para progreso, preservar ambos para quizzes)
-- [ ] **notification-service** — FCM Push + Email + BullMQ queues
-  - Worker de BullMQ para envíos programados
+- [ ] **notification-service — FCM push** (BullMQ y email ya hechos, ver arriba)
   - Integración con Firebase Cloud Messaging
-- [ ] **helpdesk-service** — Tickets + Chatbot con RAG
-  - CRUD de tickets de soporte
+- [ ] **helpdesk-service — Chatbot con RAG** (CRUD de tickets ya hecho, ver arriba)
   - Chatbot con contexto de la plataforma (OpenAI / Claude)
 - [x] **ai-service** `:4006` — Perfiles adaptativos MongoDB + recomendaciones (Python/FastAPI) ✅
   - Rule-based recommender: quiz score, video progress, idle nudge, new content
@@ -121,9 +116,8 @@
   - GET /credentials (lista badges del usuario con verifyUrl)
   - GET /credentials/:id (verificación pública)
   - buildOpenBadge: @context, VerifiableCredential, OpenBadgeCredential 3.0
-- [ ] **media-service** — Transcoding HLS + streaming adaptativo
+- [x] **media-service** `:4008` — Transcoding HLS con FFmpeg ✅ (posterior a este registro)
   - Upload de videos → FFmpeg → HLS segmentado
-  - URLs de CDN con expiración
 
 ### Fase 4 — API Routes Next.js (Web)
 - [x] `/api/auth/[...nextauth]` — NextAuth.js con CredentialsProvider → auth-service ✅
@@ -158,7 +152,7 @@
   - Pantalla de resultados con score, pass/fail, correcto/incorrecto
   - Retry hasta max_attempts
   - Enlace desde course detail cuando el ítem es tipo 'quiz'
-- [ ] `/tickets` — Sistema de soporte
+- [x] `/tickets` — Sistema de soporte ✅ (ver Fase 3)
 
 ### Fase 6 — Módulos Android
 - [x] **ProgressTracker** — Room SQLite offline (ProgressEntity, SyncQueueEntity) ✅
@@ -204,16 +198,16 @@
 
 ### Fase 8 — Tests
 - [ ] **Frontend:** Jest + React Testing Library + Playwright (E2E)
-- [ ] **Backend:** Jest/Vitest para unit tests, Supertest para integración
+- [x] **Backend:** Vitest en auth, lms, credentials, media ✅ (posterior a este registro)
 - [ ] **Android:** JUnit4 + Espresso para UI tests
 - [ ] **Carga:** k6 / Artillery para pruebas de rendimiento
 
 ### Fase 9 — Funcionalidades Avanzadas
 - [ ] **Sesiones en vivo** — Integración Zoom SDK o BigBlueButton
 - [ ] **SSO Institucional** — Configuración SAML 2.0 con universidad
-- [ ] **Modo oscuro** — Dark mode completo en web y Android
+- [x] **Modo oscuro** — web ✅ (Android sin verificar)
 - [ ] **Accesibilidad** — WCAG 2.1 AA compliance
-- [ ] **PWA** — Service Worker para web offline
+- [x] **PWA** — web ✅ (posterior a este registro)
 - [ ] **Analytics** — Mixpanel / PostHog para métricas de aprendizaje
 
 ---
@@ -237,14 +231,8 @@
 
 ## 🔗 SERVICIOS LOCALES (tras ejecutar CERO.ps1 / START.bat)
 
-| Servicio | URL / Host | Credenciales |
-|---------|-----------|-------------|
-| PostgreSQL | `localhost:5432` | `ux_admin` / `ux_dev_pass_2024` |
-| MongoDB | `localhost:27017` | `ux_admin` / `ux_dev_pass_2024` |
-| Redis | `localhost:6379` | pass: `ux_dev_pass_2024` |
-| pgAdmin | http://localhost:5050 | `admin@universidadx.local` / `admin1234` |
-| Mongo Express | http://localhost:8081 | `admin` / `admin1234` |
-| Next.js Dev | http://localhost:3000 | *(tras `cd web && npm run dev`)* |
+Puertos vigentes en [`README.md`](README.md). Usuarios y contraseñas: ver `.env.example` (no se
+escriben en documentación).
 
 ---
 
