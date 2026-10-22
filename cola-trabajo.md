@@ -70,4 +70,6 @@ Reglas del proyecto para todos los ítems:
 
 ## Cierre de versión
 
-- [ ] Cierre v1.0: notas de versión en `docs/07-notas-v1.0.md`, ESTADO_PROYECTO.md actualizado y `mv.json` con `estado_desarrollo: v1_0` (sin quitar `en_desarrollo` hasta que el driver cierre). Mecánico.
+- [x] Cierre v1.0: notas de versión en `docs/07-notas-v1.0.md`, ESTADO_PROYECTO.md actualizado y `mv.json` con `estado_desarrollo: v1_0` (sin quitar `en_desarrollo` hasta que el driver cierre). Mecánico. - cerrado 2026-10-22: v1.0 cerrada — docs/07-notas-v1.0.md, ESTADO con 3 casillas JuvinRelease (CERO SKIP con motivo), mv.json v1_0, CERO.sh nuevo; code-review low 0 hallazgos, QA juvinqa APROBADO.
+      migraciones en Postgres descartable: esquema + 002..009 aplicadas sin errores, 23 tablas
+      npx vitest run (notification-service): 32/32 en verde
