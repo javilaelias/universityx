@@ -54,7 +54,7 @@ Reglas del proyecto para todos los ítems:
 
 ## Lanzador (run.bat)
 
-- [ ] Lanzador run.bat: `run.bat` en la raiz que levanta la app completa: BD (docker compose, espera
+- [x] Lanzador run.bat: `run.bat` en la raiz que levanta la app completa: BD (docker compose, espera - cerrado 2026-10-22: run.bat nuevo en la raíz: docker compose up -d --wait (3 reintentos), abre la web, avisa si el puerto de la BD está ocupado, nunca destructivo; code-review low con 2 hallazgos corregidos, juvinqa APROBADO; modo degradado: el arranque completo con éxito no se pudo probar (Docker saturado), queda en PENDIENTES-USUARIO.
       a que este sana), backend y frontend, cada uno en su ventana, y abre el navegador; solo las
       piezas que existan. Si ya hay un lanzador que lo hace (`run_project.bat`, `levantar.bat`...),
       `run.bat` solo lo llama. Sin nada que levantar en la PC (app solo movil): lanza lo que exista
@@ -63,6 +63,10 @@ Reglas del proyecto para todos los ítems:
       la BD esta ocupado, lo dice y no mata nada. Mecanico: concilio de 2, `/code-review low`.
       Evidencia: correrlo, citar las URLs que respondieron (o lo que se vio) y detener despues solo
       lo que levanto la prueba.
+      cmd /c run.bat (corrida 2): terminó en error por Docker saturado → "[X] Algun servicio no quedo sano", pause, exit 1
+      curl /health: 4001 200 · 4003 200 · 4004 200 · 4005 200 · 4006 200 · 4007 200 · 8082 401 (vivo) · 4002/4008/3000/5050 sin respuesta
+      copia con .env POSTGRES_PORT="5432" # comentario → "[X] El puerto 5432 de la BD ya esta en uso por otro proceso", exit 1, nada detenido
+      docker compose down (sin -v) → 0 contenedores ux_ en marcha
 
 ## Cierre de versión
 
