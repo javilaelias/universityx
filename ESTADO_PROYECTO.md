@@ -17,6 +17,7 @@
 - **Email:** notification-service envía por SMTP si hay `SMTP_HOST` (si falta o es `console`, al log); plantillas ES/EN (matrícula, ticket, certificado emitido, quiz, sesión) con `locale` opcional en `/trigger`. Falta que lms y credentials llamen a `/trigger` (2026-10-21).
 - **Recuperar contraseña:** `POST /auth/forgot-password` (202 genérico, límite 3/h por email) y `/auth/reset-password` (token un solo uso, SHA-256 en BD, 30 min, revoca sesiones); páginas `/forgot-password` y `/reset-password`; migración 008 manual en BD existente (2026-10-21).
 - **Auth endurecida:** política de contraseñas (10+, letra y número, sin comunes ni email), bloqueo 15 min tras 5 fallos por email, renovación del access JWT en la web (`SessionKeeper`, refresh fuera del navegador), secretos y CORS validados en production, HS256 fijo y headers de seguridad en la web (2026-10-21).
+- **Panel admin:** `/admin` (rol admin) — usuarios (listar, crear, rol, activar/desactivar; revoca sesiones, protege último admin), todos los cursos (publicar/despublicar) y cola de tickets staff; endpoints con `requireRole` en auth/lms/helpdesk; `PATCH /courses/:id` con dueño/admin + lista blanca (2026-10-21).
 - **Calidad:** Vitest en auth, lms, credentials, media, notification; CI/CD GitHub Actions (ci, cd, release).
 
 ## Pendientes v1.0
@@ -25,10 +26,11 @@ Ver `cola-trabajo.md` (driver headless, se corre con `D:\JuvinFactory\juvinciclo
 
 ## Hallazgos
 
-- lms, credentials, media, helpdesk, notification y sync verifican JWT sin fijar `algorithms` (auth-service ya usa HS256 fijo).
+- credentials, media, notification y sync verifican JWT sin fijar `algorithms` (auth, lms y helpdesk ya usan HS256 fijo).
+- Panel admin sin smoke en navegador real (solo estático) y sin auditoría de acciones; desactivar deja vivo el access JWT ≤ 15 min.
 - `/notifications/trigger` sin auth (solo red interna; staging lo publica en 127.0.0.1).
 - notification-service sin FCM; el token del dispositivo no se registra.
-- Sin panel de administración (solo instructor); marca fija en código.
+- Marca fija en código.
 - Email solo por consola en dev.
 - `cd.yml` arma `.env.staging` en el runner y no lo copia al VPS (manda el `.env` del servidor).
 - SSO SAML/OIDC: stub, sin IdP real.

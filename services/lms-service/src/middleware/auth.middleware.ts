@@ -10,7 +10,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     return;
   }
   try {
-    req.user = jwt.verify(header.slice(7), env.JWT_SECRET) as JwtPayload;
+    req.user = jwt.verify(header.slice(7), env.JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido o expirado' });

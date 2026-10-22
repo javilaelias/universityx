@@ -35,7 +35,15 @@ router.post('/courses',
 router.patch('/courses/:id',
   requireAuth,
   requireRole('instructor', 'admin'),
+  validate(courseCtrl.patchCourseSchema),
   courseCtrl.patchCourse
+);
+
+// ── Administración ────────────────────────────────────────────────────────────
+router.get('/admin/courses',
+  requireAuth,
+  requireRole('admin'),
+  courseCtrl.adminListCourses
 );
 
 // ── Módulos y contenido ────────────────────────────────────────────────────────

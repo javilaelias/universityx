@@ -16,7 +16,7 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     return;
   }
   try {
-    const payload = jwt.verify(header.slice(7), env.JWT_SECRET) as {
+    const payload = jwt.verify(header.slice(7), env.JWT_SECRET, { algorithms: ['HS256'] }) as {
       sub: string; role: string; email: string; name?: string;
     };
     req.userId    = payload.sub;

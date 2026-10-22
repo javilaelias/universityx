@@ -46,6 +46,24 @@ export const ticketRepo = {
     return { tickets: rows, total: Number(count) };
   },
 
+  async findAll(status: string | undefined, page: number, limit: number) {
+    const where  = status ? 'WHERE t.status = $1' : '';
+    const params = status ? [status] : [];
+    const [{ rows }, { rows: [{ count }] }] = await Promise.all([
+      pool.query<Ticket>(
+        `SELECT t.*, u.full_name AS user_name, u.email AS user_email
+         FROM   support_tickets t
+         JOIN   users u ON u.id = t.user_id
+         ${where}
+         ORDER  BY t.updated_at DESC
+         LIMIT  $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, (page - 1) * limit],
+      ),
+      pool.query(`SELECT COUNT(*) FROM support_tickets t ${where}`, params),
+    ]);
+    return { tickets: rows, total: Number(count) };
+  },
+
   async findById(id: string, userId: string, isAdmin: boolean) {
     const { rows } = await pool.query<Ticket>(
       `SELECT t.*, u.full_name AS user_name, u.email AS user_email

@@ -3,7 +3,7 @@
 import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, GraduationCap, LayoutDashboard, LogOut, Moon, PenSquare, Sun, TicketCheck, User } from 'lucide-react';
+import { BookOpen, GraduationCap, Shield, LayoutDashboard, LogOut, Moon, PenSquare, Sun, TicketCheck, User } from 'lucide-react';
 import clsx from 'clsx';
 import NotificationBell from './NotificationBell';
 import { useTheme, useLang } from '@/contexts/app-context';
@@ -15,11 +15,13 @@ export default function Navbar() {
   const { t, toggle: toggleLang, lang } = useLang();
 
   const isInstructor = session?.user?.role === 'instructor' || session?.user?.role === 'admin';
+  const isAdmin      = session?.user?.role === 'admin';
 
   const NAV = [
     { href: '/dashboard',  label: t('nav.dashboard'),   icon: LayoutDashboard },
     { href: '/courses',    label: t('nav.courses'),      icon: GraduationCap   },
     ...(isInstructor ? [{ href: '/instructor', label: t('nav.instructor'), icon: PenSquare }] : []),
+    ...(isAdmin ? [{ href: '/admin', label: t('nav.admin'), icon: Shield }] : []),
     { href: '/tickets',    label: t('nav.support'),      icon: TicketCheck     },
     { href: '/profile',    label: t('nav.profile'),      icon: User            },
   ];

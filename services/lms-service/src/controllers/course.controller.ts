@@ -13,6 +13,18 @@ export const createCourseSchema = z.object({
   tags:        z.array(z.string()).default([]),
 });
 
+// Lista blanca de PATCH /courses/:id: lo que manda el editor del instructor. `is_published` solo
+// cambia por /publish; las claves desconocidas se descartan (nunca llegan como nombre de columna).
+export const patchCourseSchema = z.object({
+  title:         z.string().min(3).max(500),
+  slug:          z.string().min(3).max(500).regex(/^[a-z0-9-]+$/),
+  description:   z.string().max(5000).nullable(),
+  thumbnail_url: z.string().max(2000).nullable(),
+  level:         z.enum(['beginner', 'intermediate', 'advanced']),
+  language:      z.string().max(10),
+  tags:          z.array(z.string().max(100)).max(50),
+}).partial().refine((b) => Object.keys(b).length > 0, { message: 'Nada que actualizar' });
+
 export const createModuleSchema = z.object({
   title:           z.string().min(2).max(500),
   description:     z.string().optional(),
@@ -99,12 +111,26 @@ export async function createCourse(req: Request, res: Response, next: NextFuncti
 // ── PATCH /courses/:id ────────────────────────────────────────────────────────
 export async function patchCourse(req: Request, res: Response, next: NextFunction) {
   try {
-    const course = await repo.updateCourse(req.params.id, req.body);
+    if (!z.string().uuid().safeParse(req.params.id).success) {
+      res.status(400).json({ error: 'Id inválido' }); return;
+    }
+    const existing = await repo.findCourseById(req.params.id);
+    if (!existing) { res.status(404).json({ error: 'Curso no encontrado' }); return; }
+    if (existing.instructor_id !== req.user!.sub && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Sin permisos' }); return;
+    }
+    const course = await repo.updateCourse(req.params.id, req.body as z.infer<typeof patchCourseSchema>);
     if (!course) { res.status(404).json({ error: 'Curso no encontrado' }); return; }
     await cacheInvalidate(`course:${req.params.id}`);
     await cacheInvalidate('courses:list:*');
     res.json({ course });
-  } catch (err) { next(err); }
+  } catch (err) {
+    if ((err as { code?: string }).code === '23505') {
+      res.status(409).json({ error: 'El slug ya existe' });
+      return;
+    }
+    next(err);
+  }
 }
 
 // ── POST /courses/:courseId/modules ───────────────────────────────────────────
@@ -135,6 +161,14 @@ export async function createContent(req: Request, res: Response, next: NextFunct
 export async function myCourses(req: Request, res: Response, next: NextFunction) {
   try {
     const courses = await repo.findCoursesByInstructor(req.user!.sub);
+    res.json({ courses });
+  } catch (err) { next(err); }
+}
+
+// ── GET /admin/courses ─────────────────────────────────────────────────────────
+export async function adminListCourses(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const courses = await repo.findAllCoursesAdmin();
     res.json({ courses });
   } catch (err) { next(err); }
 }

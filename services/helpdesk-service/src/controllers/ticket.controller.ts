@@ -14,6 +14,8 @@ async function notifyAsync(event: string, userId: string, email: string, data: R
   }).catch(err => console.error('[notify]', err.message));
 }
 
+const STATUSES = ['open', 'in_progress', 'waiting_user', 'resolved', 'closed'] as const;
+
 const createSchema = z.object({
   category:    z.enum(['payment', 'technical', 'academic', 'certificate', 'administrative']),
   subject:     z.string().min(5).max(500),
@@ -27,15 +29,33 @@ const messageSchema = z.object({
 });
 
 const statusSchema = z.object({
-  status:     z.enum(['open', 'in_progress', 'waiting_user', 'resolved', 'closed']),
+  status:     z.enum(STATUSES),
   assignedTo: z.string().uuid().optional(),
+});
+
+const isStaff = (role?: string) => ['admin', 'support'].includes(role ?? '');
+
+const queueSchema = z.object({
+  status: z.enum(STATUSES).optional(),
+  page:   z.coerce.number().int().min(1).default(1),
 });
 
 export const ticketCtrl = {
   async list(req: AuthRequest, res: Response) {
     const page  = Math.max(Number(req.query.page)  || 1, 1);
-    const limit = Math.min(Number(req.query.limit) || 10, 50);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
     const result = await ticketRepo.findByUser(req.userId!, page, limit);
+    res.json({ ...result, page, totalPages: Math.ceil(result.total / limit) });
+  },
+
+  // Cola de soporte: todos los tickets, solo staff.
+  async queue(req: AuthRequest, res: Response) {
+    if (!isStaff(req.userRole)) { res.status(403).json({ message: 'Solo soporte' }); return; }
+    const parsed = queueSchema.safeParse(req.query);
+    if (!parsed.success) { res.status(400).json({ message: 'Parámetros inválidos' }); return; }
+    const { status, page } = parsed.data;
+    const limit  = 20;
+    const result = await ticketRepo.findAll(status, page, limit);
     res.json({ ...result, page, totalPages: Math.ceil(result.total / limit) });
   },
 
@@ -55,7 +75,7 @@ export const ticketCtrl = {
   },
 
   async getById(req: AuthRequest, res: Response) {
-    const isAdmin = ['admin', 'support'].includes(req.userRole ?? '');
+    const isAdmin = isStaff(req.userRole);
     const ticket  = await ticketRepo.findById(req.params.id, req.userId!, isAdmin);
     if (!ticket) { res.status(404).json({ message: 'Ticket no encontrado' }); return; }
 
@@ -67,7 +87,7 @@ export const ticketCtrl = {
     const parsed = messageSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ message: 'Datos inválidos', errors: parsed.error.flatten() }); return; }
 
-    const isAdmin   = ['admin', 'support'].includes(req.userRole ?? '');
+    const isAdmin   = isStaff(req.userRole);
     const isInternal = parsed.data.isInternal && isAdmin;
 
     // Verify ticket access
@@ -93,7 +113,7 @@ export const ticketCtrl = {
   },
 
   async updateStatus(req: AuthRequest, res: Response) {
-    if (!['admin', 'support'].includes(req.userRole ?? '')) {
+    if (!isStaff(req.userRole)) {
       res.status(403).json({ message: 'Solo soporte puede cambiar el estado' }); return;
     }
     const parsed = statusSchema.safeParse(req.body);

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { validate } from '../middleware/validate.middleware';
-import { requireAuth } from '../middleware/auth.middleware';
+import { requireAuth, requireRole } from '../middleware/auth.middleware';
 import {
   register, registerSchema,
   login,    loginSchema,
@@ -21,6 +21,11 @@ import {
   forgotPassword, forgotPasswordSchema,
   resetPassword,  resetPasswordSchema,
 } from '../controllers/password-reset.controller';
+import {
+  listUsers,
+  createUser, createUserSchema,
+  updateUser, updateUserSchema,
+} from '../controllers/admin.controller';
 
 export const authRoutes = Router();
 
@@ -75,3 +80,11 @@ authRoutes.post('/sso/callback',
 // ── Rutas autenticadas ────────────────────────────────────────────────────────
 authRoutes.get('/me',          apiLimiter, requireAuth, me);
 authRoutes.post('/logout-all', apiLimiter, requireAuth, logoutAll);
+
+// ── Administración (solo rol admin) ───────────────────────────────────────────
+const adminRoutes = Router();
+adminRoutes.use(apiLimiter, requireAuth, requireRole('admin'));
+adminRoutes.get('/users',        listUsers);
+adminRoutes.post('/users',       validate(createUserSchema), createUser);
+adminRoutes.patch('/users/:id',  validate(updateUserSchema), updateUser);
+authRoutes.use('/admin', adminRoutes);

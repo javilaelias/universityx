@@ -187,6 +187,19 @@ export async function findCoursesByInstructor(instructorId: string) {
   return rows;
 }
 
+export async function findAllCoursesAdmin() {
+  // Subconsulta correlacionada: sin el producto módulos × matrículas de un doble JOIN.
+  const { rows } = await query<Course & { instructor_name: string | null; enrolled_count: number }>(
+    `SELECT c.id, c.title, c.slug, c.level, c.is_published, c.instructor_id, c.created_at,
+            u.full_name AS instructor_name,
+            (SELECT COUNT(*)::int FROM enrollments e WHERE e.course_id = c.id) AS enrolled_count
+     FROM   courses c
+     LEFT   JOIN users u ON u.id = c.instructor_id
+     ORDER  BY c.created_at DESC`
+  );
+  return rows;
+}
+
 export async function deleteCourseById(id: string) {
   const { rowCount } = await query('DELETE FROM courses WHERE id = $1', [id]);
   return (rowCount ?? 0) > 0;
