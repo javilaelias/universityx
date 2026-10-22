@@ -48,7 +48,9 @@ Reglas del proyecto para todos los ítems:
 - [x] 9. E2E Playwright del flujo crítico: login → matrícula → contenido → quiz → certificado → verificación pública, más recuperar contraseña y un smoke de /admin; ES/EN y tema claro/oscuro; job en CI. - cerrado 2026-10-21: E2E Playwright (flujo crítico login→matrícula→contenido→quiz→certificado→/verify, recuperar contraseña, smoke /admin, ES/EN + tema) con job `e2e` en CI; arreglados curso/quiz rotos en la web, «Reclamar credenciales», IDOR de emisión y atajo del quiz por `/progress`; concilio 5, /code-review high, /security-review, QA juvinqa aprobada (commit 4ac7873).
       cd e2e && npx playwright test → 6 passed
       services/credentials-service: npx vitest run → 19 passed · services/lms-service: npx vitest run → 20 passed
-- [ ] 10. Push FCM real: endpoint para registrar el token del dispositivo, envío desde notification-service con firebase-admin (opcional por config: sin credenciales → solo in-app) y `onNewToken` de Android enviando el token. Mecánico.
+- [x] 10. Push FCM real: endpoint para registrar el token del dispositivo, envío desde notification-service con firebase-admin (opcional por config: sin credenciales → solo in-app) y `onNewToken` de Android enviando el token. Mecánico. - cerrado 2026-10-22: Push FCM. Los endpoints `/notifications/devices` y la tabla `device_tokens` (migración 009) están hechos. El envío usa firebase-admin y es opcional: sin `FCM_CREDENTIALS_FILE` queda solo in-app + email. Android envía el token en `onNewToken`, login y logout. Revisiones: concilio 2, /code-review low con 2 de 2 corregidos, /security-review sin hallazgos, juvinqa APROBADO. Falta (manual): compilar Android y probar en un dispositivo.
+      npx tsc --noEmit → exit 0
+      npx vitest run (notification-service) → 3 files, 32 passed
 
 ## Lanzador (run.bat)
 
