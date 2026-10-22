@@ -2,6 +2,7 @@ package com.universidadx.di
 
 import com.universidadx.auth.TokenManager
 import com.universidadx.data.remote.api.AuthApi
+import com.universidadx.data.remote.api.DeviceApi
 import com.universidadx.data.remote.api.LmsApi
 import com.universidadx.data.remote.api.SyncApi
 import dagger.Module
@@ -19,6 +20,7 @@ import javax.inject.Singleton
 private const val AUTH_BASE = "http://10.0.2.2:4001/"   // Android emulator → localhost
 private const val LMS_BASE  = "http://10.0.2.2:4002/"
 private const val SYNC_BASE = "http://10.0.2.2:4005/"
+private const val NOTIF_BASE = "http://10.0.2.2:4003/"
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -59,6 +61,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("notification")
+    fun provideNotificationRetrofit(client: OkHttpClient): Retrofit =
+        Retrofit.Builder().baseUrl(NOTIF_BASE).client(client).addConverterFactory(GsonConverterFactory.create()).build()
+
+    @Provides
+    @Singleton
     fun provideAuthApi(@Named("auth") r: Retrofit): AuthApi = r.create(AuthApi::class.java)
 
     @Provides
@@ -68,4 +76,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideSyncApi(@Named("sync") r: Retrofit): SyncApi = r.create(SyncApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideDeviceApi(@Named("notification") r: Retrofit): DeviceApi = r.create(DeviceApi::class.java)
 }

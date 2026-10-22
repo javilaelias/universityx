@@ -4,6 +4,7 @@ const h = vi.hoisted(() => ({
   processor: undefined as undefined | ((job: unknown) => Promise<void>),
   poolQuery: vi.fn(),
   sendMail:  vi.fn(),
+  pushToUser: vi.fn(),
 }));
 
 vi.mock('bullmq', () => ({
@@ -13,8 +14,9 @@ vi.mock('bullmq', () => ({
   },
 }));
 vi.mock('../config/env', () => ({
-  env: { SMTP_HOST: 'console', SMTP_PORT: '587', SMTP_USER: '', SMTP_PASS: '', SMTP_FROM: 'x@x.test', NODE_ENV: 'production' },
+  env: { SMTP_HOST: 'console', SMTP_PORT: '587', SMTP_USER: '', SMTP_PASS: '', SMTP_FROM: 'x@x.test', NODE_ENV: 'production', FCM_CREDENTIALS_FILE: 'fcm.json' },
 }));
+vi.mock('../push/fcm', () => ({ createPushSender: () => ({}), pushToUser: h.pushToUser }));
 vi.mock('../config/redis', () => ({ redisConnection: {} }));
 vi.mock('../db/postgres', () => ({ pool: { query: h.poolQuery } }));
 vi.mock('../mail/transport', () => ({
@@ -76,6 +78,7 @@ describe('worker', () => {
     vi.clearAllMocks();
     h.sendMail.mockResolvedValue({ message: JSON.stringify({ to: 'a@x.test', subject: 'S', html: resetUrl }) });
     h.poolQuery.mockResolvedValue({ rows: [] });
+    h.pushToUser.mockResolvedValue({ sent: 1, removed: 0 });
     startNotificationWorker();
   });
 
@@ -83,6 +86,7 @@ describe('worker', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     await h.processor!(job('auth.password_reset', { resetUrl }));
     expect(h.poolQuery).not.toHaveBeenCalled();
+    expect(h.pushToUser).not.toHaveBeenCalled();
     expect(h.sendMail).toHaveBeenCalledOnce();
     expect(JSON.stringify(log.mock.calls)).not.toContain('SECRET123');
     log.mockRestore();
@@ -93,5 +97,29 @@ describe('worker', () => {
     await h.processor!(job('ticket.created', { subject: 'Login' }));
     expect(h.poolQuery).toHaveBeenCalledOnce();
     expect(h.sendMail).toHaveBeenCalledOnce();
+  });
+
+  it('push: se envía una vez con el texto in-app y no se repite en reintentos', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const j = job('ticket.created', { subject: 'Login' });
+    await h.processor!(j);
+    expect(h.pushToUser).toHaveBeenCalledOnce();
+    expect(h.pushToUser.mock.calls[0][2]).toBe('u1');
+    expect(h.pushToUser.mock.calls[0][3]).toMatchObject({ event: 'ticket.created', title: expect.any(String) });
+    expect(j.updateData).toHaveBeenLastCalledWith(expect.objectContaining({ pushSent: true }));
+
+    const retry = job('ticket.created', { subject: 'Login' });
+    retry.data = { ...retry.data, inAppStored: true, pushSent: true } as typeof retry.data;
+    await h.processor!(retry);
+    expect(h.pushToUser).toHaveBeenCalledOnce();
+  });
+
+  it('push: un fallo de FCM no impide el email ni hace fallar el job', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    h.pushToUser.mockRejectedValueOnce(new Error('fcm down'));
+    await expect(h.processor!(job('ticket.created', { subject: 'Login' }))).resolves.toBeUndefined();
+    expect(h.sendMail).toHaveBeenCalledOnce();
+    err.mockRestore();
   });
 });

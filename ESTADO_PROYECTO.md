@@ -19,6 +19,7 @@
 - **Auth endurecida:** política de contraseñas (10+, letra y número, sin comunes ni email), bloqueo 15 min tras 5 fallos por email, renovación del access JWT en la web (`SessionKeeper`, refresh fuera del navegador), secretos y CORS validados en production, HS256 fijo y headers de seguridad en la web (2026-10-21).
 - **Panel admin:** `/admin` (rol admin) — usuarios (listar, crear, rol, activar/desactivar; revoca sesiones, protege último admin), todos los cursos (publicar/despublicar) y cola de tickets staff; endpoints con `requireRole` en auth/lms/helpdesk; `PATCH /courses/:id` con dueño/admin + lista blanca (2026-10-21).
 - **Marca configurable:** bloque `BRAND_*` del `.env` (nombre, color primario → paleta `brand-*`, logo, favicon, ícono PWA, pie) leído en runtime por web, emails y certificado PDF; vacío = Universidad X (`docs/07-marca.md`, 2026-10-21).
+- **Push FCM:** `POST/DELETE /notifications/devices` (JWT, tabla `device_tokens`, migración 009 manual en BD existente); el worker envía con firebase-admin si hay `FCM_CREDENTIALS_FILE` (si no, solo in-app + email), best-effort, y borra los tokens caducados; Android registra el token en el login y en `onNewToken` y lo desregistra en el logout (plugin google-services solo con `google-services.json`) (2026-10-22).
 - **Calidad:** Vitest en auth, lms, credentials, media, notification; CI/CD GitHub Actions (ci, cd, release).
 - **E2E (Playwright):** `e2e/` — flujo crítico (login → matrícula → contenido → quiz → certificado → `/verify`), recuperar contraseña, smoke `/admin`, ES/EN + tema; job `e2e` en `ci.yml`. Arregló curso/quiz rotos en la web (adaptadores BFF `lib/lms-shape.ts`), "Reclamar credenciales" (`POST /credentials` sin body, IDOR cerrado) y el atajo de quiz por `/progress` (2026-10-21).
 
@@ -36,7 +37,7 @@ Ver `cola-trabajo.md` (driver headless, se corre con `D:\JuvinFactory\juvinciclo
 - credentials, media, notification y sync verifican JWT sin fijar `algorithms` (auth, lms y helpdesk ya usan HS256 fijo).
 - Panel admin sin smoke en navegador real (solo estático) y sin auditoría de acciones; desactivar deja vivo el access JWT ≤ 15 min.
 - `/notifications/trigger` sin auth (solo red interna; staging lo publica en 127.0.0.1).
-- notification-service sin FCM; el token del dispositivo no se registra.
+- Push FCM sin probar en un dispositivo real; el build Android no se verificó (no hay gradlew en el repo).
 - Android sin marca configurable (nombre e íconos nativos fijos).
 - `navigateFallback: '/offline'` de la PWA apunta a una URL que el SW no precachea (preexistente).
 - Email solo por consola en dev.

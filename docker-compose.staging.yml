@@ -92,6 +92,7 @@ services:
       SMTP_PASS:    ${SMTP_PASS:-}
       SMTP_FROM:    ${SMTP_FROM:-}    # vacío = BRAND_NAME <no-reply@universidadx.com>
       WEB_BASE_URL: *origin
+      FCM_CREDENTIALS_FILE: ${FCM_CREDENTIALS_FILE:-}   # vacío = sin push (ver docs/06-despliegue.md)
 
   helpdesk-service:
     build: !reset null

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.universidadx.auth.TokenManager
 import com.universidadx.data.remote.api.AuthApi
 import com.universidadx.data.remote.api.LoginBody
+import com.universidadx.push.PushTokenRegistrar
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ sealed class LoginUiState {
 class LoginViewModel @Inject constructor(
     private val authApi:      AuthApi,
     private val tokenManager: TokenManager,
+    private val pushRegistrar: PushTokenRegistrar,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
@@ -42,6 +44,7 @@ class LoginViewModel @Inject constructor(
                 tokenManager.refreshToken = resp.refreshToken
                 tokenManager.userId       = resp.user.id
                 tokenManager.userRole     = resp.user.role
+                pushRegistrar.registerCurrent()
                 LoginUiState.Success
             } catch (e: Exception) {
                 LoginUiState.Error(e.message ?: "Credenciales incorrectas")
@@ -51,6 +54,7 @@ class LoginViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
+            pushRegistrar.unregisterCurrent()
             try {
                 tokenManager.refreshToken?.let { rt ->
                     authApi.logout(mapOf("refreshToken" to rt))

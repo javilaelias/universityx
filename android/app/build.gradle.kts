@@ -6,6 +6,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Push FCM: el plugin solo se aplica si está app/google-services.json (propio de cada despliegue, no se
+// versiona). Sin él, Firebase no se inicializa y la app funciona sin push.
+if (file("google-services.json").exists()) apply(plugin = "com.google.gms.google-services")
+
 android {
     namespace = "com.universidadx"
     compileSdk = 35
@@ -85,6 +89,10 @@ dependencies {
 
     // ── Almacenamiento seguro ─────────────────────────────────────────────────────
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // ── Push (FCM) ───────────────────────────────────────────────────────────────
+    implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
+    implementation("com.google.firebase:firebase-messaging")
 
     // ── Red ───────────────────────────────────────────────────────────────────────
     implementation("com.squareup.retrofit2:retrofit:2.11.0")

@@ -16,6 +16,8 @@ const schema = z.object({
   SMTP_FROM:    z.string().default(''),
   // URL pública de la web: el enlace de reset de contraseña solo puede apuntar ahí
   WEB_BASE_URL: z.string().url().default('http://localhost:3000'),
+  // Push FCM — ruta al JSON de la cuenta de servicio de Firebase. Vacío = sin push (solo in-app + email)
+  FCM_CREDENTIALS_FILE: z.string().default(''),
 });
 
 export const env = schema.parse(process.env);

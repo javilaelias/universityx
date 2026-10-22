@@ -97,6 +97,15 @@ solas: respaldar antes de actualizar.
 dcs exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'   < infra/migrations/008-password-reset.sql
 ```
 
+**Push FCM (009).** Aplicar `infra/migrations/009-device-tokens.sql` como arriba. El push es opcional: sin
+`FCM_CREDENTIALS_FILE` notification-service solo guarda la notificación in-app y manda el email. Para
+activarlo: en la consola de Firebase, cuenta de servicio → generar clave privada (JSON); dejarla en el VPS
+fuera del repo (permisos `600`), montarla en el contenedor con un override de Compose
+(`volumes: ["/ruta/fcm.json:/run/secrets/fcm.json:ro"]` en `notification-service`) y poner
+`FCM_CREDENTIALS_FILE=/run/secrets/fcm.json` en `.env`. La app Android necesita el `google-services.json`
+del mismo proyecto Firebase en `android/app/` al compilar (no se versiona); sin él compila sin push.
+Los tokens se registran con `POST /notifications/devices` (JWT); los que FCM reporta como caducados se borran solos al enviar.
+
 **Recuperar contraseña (008).** `POST /auth/forgot-password` arma el enlace con `WEB_BASE_URL` (obligatoria
 en production; staging usa `NEXTAUTH_URL`) y lo manda por notification-service. Si notification-service está
 caído, el correo se pierde (queda solo un error en el log de auth): el usuario lo vuelve a pedir. Tras el

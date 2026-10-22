@@ -8,6 +8,7 @@ export interface NotificationJob {
   data:   Record<string, unknown>;
   locale?: 'es' | 'en';
   inAppStored?: boolean;   // lo marca el worker tras guardar la notificación in-app
+  pushSent?:    boolean;   // lo marca el worker tras intentar el push (no se repite en reintentos)
 }
 
 export const notificationQueue = new Queue<NotificationJob>('notifications', {

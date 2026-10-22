@@ -9,8 +9,13 @@ import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.universidadx.MainActivity
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class FcmService : FirebaseMessagingService() {
+
+    @Inject lateinit var registrar: PushTokenRegistrar
 
     override fun onMessageReceived(msg: RemoteMessage) {
         val title = msg.notification?.title ?: msg.data["title"] ?: return
@@ -19,7 +24,7 @@ class FcmService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        // TODO: send token to notification-service via API
+        registrar.onNewToken(token)
     }
 
     private fun showNotification(title: String, body: String) {

@@ -6,10 +6,12 @@ import { buildTemplate }    from '../templates/email.templates';
 import { brand, mailFrom }   from '../config/brand';
 import { createMailTransport, isConsoleMode } from '../mail/transport';
 import { isEmailOnly, consoleLogView } from './events';
+import { createPushSender, pushToUser } from '../push/fcm';
 import type { NotificationJob } from './index';
 
 const transporter = createMailTransport(env);
 const consoleMode = isConsoleMode(env);
+const pushSender  = createPushSender(env.FCM_CREDENTIALS_FILE);
 
 export function startNotificationWorker() {
   const worker = new Worker<NotificationJob>(
@@ -30,7 +32,19 @@ export function startNotificationWorker() {
         await job.updateData({ ...job.data, inAppStored: true });
       }
 
-      // 2. Send email
+      // 2. Push FCM — best-effort y una sola vez: un fallo de FCM no reintenta el job
+      //    (duplicaría el email). Nunca para eventos solo-email.
+      if (pushSender && !isEmailOnly(event) && !job.data.pushSent) {
+        try {
+          await pushToUser(pushSender, (sql, params) => pool.query(sql, params), userId,
+            { ...template.inApp, event });
+        } catch (err) {
+          console.error(`[push] ✗ ${event} → ${userId}`, (err as Error).message);
+        }
+        await job.updateData({ ...job.data, pushSent: true });
+      }
+
+      // 3. Send email
       const info = await transporter.sendMail({
         from:    mailFrom(env.SMTP_FROM, brand),
         to:      email,

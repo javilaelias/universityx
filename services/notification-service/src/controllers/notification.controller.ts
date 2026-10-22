@@ -5,6 +5,7 @@ import { notificationQueue }  from '../queues';
 import { jobOptionsFor, isAllowedResetUrl } from '../queues/events';
 import { env }                from '../config/env';
 import type { AuthRequest }   from '../middleware/auth';
+import { registerDeviceSchema, unregisterDeviceSchema } from '../push/devices';
 
 const triggerSchema = z.object({
   event:  z.string().min(1),
@@ -78,4 +79,36 @@ export async function markAllRead(req: AuthRequest, res: Response) {
     [req.userId],
   );
   res.json({ updated: rowCount });
+}
+
+// POST /notifications/devices — registra el token FCM del dispositivo del usuario.
+// Un token es de un solo usuario: si otra cuenta inicia sesión en ese equipo, se reasigna.
+export async function registerDevice(req: AuthRequest, res: Response) {
+  const parsed = registerDeviceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: 'Payload inválido', errors: parsed.error.flatten() });
+    return;
+  }
+  await pool.query(
+    `INSERT INTO device_tokens (user_id, token, platform)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (token) DO UPDATE
+       SET user_id = EXCLUDED.user_id, platform = EXCLUDED.platform, updated_at = NOW()`,
+    [req.userId, parsed.data.token, parsed.data.platform],
+  );
+  res.status(204).end();
+}
+
+// DELETE /notifications/devices — al cerrar sesión; solo borra tokens propios.
+export async function unregisterDevice(req: AuthRequest, res: Response) {
+  const parsed = unregisterDeviceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: 'Payload inválido', errors: parsed.error.flatten() });
+    return;
+  }
+  await pool.query(
+    `DELETE FROM device_tokens WHERE token = $1 AND user_id = $2`,
+    [parsed.data.token, req.userId],
+  );
+  res.status(204).end();
 }
