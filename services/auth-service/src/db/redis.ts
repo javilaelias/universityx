@@ -1,5 +1,6 @@
 import { createClient, RedisClientType } from 'redis';
 import { env } from '../config/env';
+import { parseDurationToMs } from '../services/duration';
 
 let redisClient: RedisClientType;
 
@@ -18,7 +19,7 @@ export function getRedis(): RedisClientType {
 // ── Refresh token store ───────────────────────────────────────────────────────
 // Key: `rt:<userId>:<tokenId>`  Value: "1"  TTL: tiempo de expiración del RT
 
-const RT_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 días
+const RT_TTL_SECONDS = Math.ceil(parseDurationToMs(env.JWT_REFRESH_EXPIRES_IN, 7 * 86_400_000) / 1000);
 
 export async function storeRefreshToken(
   userId: string,
@@ -63,4 +64,29 @@ export async function countResetRequest(emailHash: string): Promise<number> {
     .incr(key)
     .exec();
   return Number(count);
+}
+
+// ── Bloqueo temporal por intentos de login ───────────────────────────────────
+// Key: `loginfail:<sha256(email)>`  Value: intentos  TTL: 15 min desde el primero, renovado a
+// 15 min al llegar al máximo. Se cuenta ANTES de bcrypt: con peticiones en paralelo cada una
+// recibe un número distinto, así que nunca se prueban más de LOGIN_MAX_ATTEMPTS contraseñas.
+// Un login correcto borra la clave (su intento no queda contado).
+
+export const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_WINDOW_SECONDS = 15 * 60;
+
+export async function countLoginAttempt(emailHash: string): Promise<number> {
+  const key = `loginfail:${emailHash}`;
+  const [, count] = await getRedis()
+    .multi()
+    .set(key, '0', { EX: LOGIN_WINDOW_SECONDS, NX: true })
+    .incr(key)
+    .exec();
+  const n = Number(count);
+  if (n === LOGIN_MAX_ATTEMPTS) await getRedis().expire(key, LOGIN_WINDOW_SECONDS);
+  return n;
+}
+
+export async function clearLoginFailures(emailHash: string): Promise<void> {
+  await getRedis().del(`loginfail:${emailHash}`);
 }

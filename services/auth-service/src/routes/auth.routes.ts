@@ -55,7 +55,9 @@ const apiLimiter = rateLimit({
 // ── Rutas públicas ────────────────────────────────────────────────────────────
 authRoutes.post('/register', authLimiter, validate(registerSchema), register);
 authRoutes.post('/login',    authLimiter, validate(loginSchema),    login);
-authRoutes.post('/refresh',  authLimiter, validate(refreshSchema),  refresh);
+// Sin limitador por IP: lo llama el servidor de la web para todos los usuarios (un solo bucket) y
+// un refresh token es un JWT firmado: uno inventado se rechaza sin tocar Redis ni bcrypt.
+authRoutes.post('/refresh',               validate(refreshSchema),  refresh);
 authRoutes.post('/logout',               validate(refreshSchema),  logout);
 authRoutes.post('/forgot-password', passwordLimiter, validate(forgotPasswordSchema), forgotPassword);
 authRoutes.post('/reset-password',  passwordLimiter, validate(resetPasswordSchema),  resetPassword);

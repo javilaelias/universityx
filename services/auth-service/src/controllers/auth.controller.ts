@@ -6,7 +6,12 @@ import {
   validateRefreshToken,
   revokeRefreshToken,
   revokeAllUserTokens,
+  countLoginAttempt,
+  clearLoginFailures,
+  LOGIN_MAX_ATTEMPTS,
 } from '../db/redis';
+import { passwordSchema, containsEmailLocalPart } from '../services/password-policy';
+import { sha256 } from '../services/reset-token.service';
 import { hashPassword, verifyPassword } from '../services/password.service';
 import { generateTokenPair, verifyRefreshToken } from '../services/jwt.service';
 import type { User } from '../types/auth.types';
@@ -15,8 +20,11 @@ import type { User } from '../types/auth.types';
 
 export const registerSchema = z.object({
   email:    z.string().email('Email inválido').toLowerCase(),
-  password: z.string().min(8, 'Mínimo 8 caracteres'),
+  password: passwordSchema,
   fullName: z.string().min(2, 'Nombre requerido').max(255),
+}).refine((b) => !containsEmailLocalPart(b.password, b.email), {
+  message: 'La contraseña no puede contener tu email',
+  path:    ['password'],
 });
 
 export const loginSchema = z.object({
@@ -27,6 +35,9 @@ export const loginSchema = z.object({
 export const refreshSchema = z.object({
   refreshToken: z.string().min(1),
 });
+
+const LOCKED_MESSAGE =
+  'Demasiados intentos fallidos. Espera 15 minutos o restablece tu contraseña.';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -86,6 +97,14 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body as z.infer<typeof loginSchema>;
 
+    // Bloqueo por email, exista o no la cuenta (no revela cuáles existen). Antes de BD y bcrypt.
+    const emailHash = sha256(email);
+    const attempt   = await countLoginAttempt(emailHash);
+    if (attempt > LOGIN_MAX_ATTEMPTS) {
+      res.status(429).json({ error: LOCKED_MESSAGE, code: 'ACCOUNT_LOCKED' });
+      return;
+    }
+
     const { rows } = await query<User & { password_hash: string }>(
       `SELECT u.id, u.email, u.full_name, u.role, u.avatar_url, u.is_active, u.created_at,
               uc.password_hash
@@ -101,6 +120,10 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 
     if (!valid) {
       // Mismo mensaje para no revelar si el email existe
+      if (attempt >= LOGIN_MAX_ATTEMPTS) {
+        res.status(429).json({ error: LOCKED_MESSAGE, code: 'ACCOUNT_LOCKED' });
+        return;
+      }
       res.status(401).json({ error: 'Credenciales incorrectas' });
       return;
     }
@@ -109,6 +132,8 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       res.status(403).json({ error: 'Cuenta desactivada' });
       return;
     }
+
+    await clearLoginFailures(emailHash);
 
     // Actualizar last_login
     await query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);

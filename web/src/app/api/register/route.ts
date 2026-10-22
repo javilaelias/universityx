@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { forwardedForHeader } from '@/lib/client-ip';
 
 const AUTH = process.env.AUTH_SERVICE_URL ?? 'http://localhost:4001';
 
@@ -7,7 +8,7 @@ export async function POST(req: NextRequest) {
 
   const upstream = await fetch(`${AUTH}/auth/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...forwardedForHeader(req.headers.get('x-forwarded-for')) },
     body: JSON.stringify(body),
   });
 

@@ -69,7 +69,7 @@ function LoginContent() {
     setLoading(false);
 
     if (result?.error) {
-      setError(t('login.error'));
+      setError(t(result.error === 'locked' ? 'login.locked' : 'login.error'));
     } else {
       router.push('/dashboard');
     }

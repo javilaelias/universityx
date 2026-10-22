@@ -5,9 +5,12 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useLang } from '@/contexts/app-context';
+import { passwordPolicyError, failedPassword } from '@/lib/password-policy';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t }  = useLang();
 
   const [fullName,  setFullName]  = useState('');
   const [email,     setEmail]     = useState('');
@@ -22,11 +25,12 @@ export default function RegisterPage() {
     setError('');
 
     if (password !== confirm) {
-      setError('Las contraseñas no coinciden.');
+      setError(t('register.err_match'));
       return;
     }
-    if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.');
+    const policyError = passwordPolicyError(password, email);
+    if (policyError) {
+      setError(t(policyError));
       return;
     }
 
@@ -38,11 +42,14 @@ export default function RegisterPage() {
       body: JSON.stringify({ email, password, fullName }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       setLoading(false);
-      setError(data?.error ?? 'Error al crear la cuenta.');
+      // 400 con fields[password] = política de contraseña; 409 = email ya registrado.
+      setError(t(res.status === 409 ? 'register.err_taken'
+        : res.status === 400 && failedPassword(data) ? 'register.err_policy'
+        : 'register.err_default'));
       return;
     }
 
@@ -72,8 +79,8 @@ export default function RegisterPage() {
             <BookOpen className="h-7 w-7 text-white" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Crear cuenta</h1>
-            <p className="mt-1 text-sm text-gray-500">Universidad X · Plataforma adaptativa</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('register.title')}</h1>
+            <p className="mt-1 text-sm text-gray-500">{t('register.subtitle')}</p>
           </div>
         </div>
 
@@ -81,7 +88,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Nombre completo
+              {t('register.fullname')}
             </label>
             <input
               type="text"
@@ -89,36 +96,38 @@ export default function RegisterPage() {
               autoFocus
               value={fullName}
               onChange={e => setFullName(e.target.value)}
-              placeholder="Tu nombre"
+              placeholder={t('register.name_ph')}
               className="input"
             />
           </div>
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Correo electrónico
+              {t('register.email')}
             </label>
             <input
               type="email"
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="tu@correo.com"
+              placeholder={t('login.email_ph')}
               className="input"
             />
           </div>
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Contraseña
+              {t('register.password')}
             </label>
             <div className="relative">
               <input
                 type={show ? 'text' : 'password'}
                 required
+                autoComplete="new-password"
+                maxLength={128}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Mínimo 8 caracteres"
+                placeholder={t('register.password_ph')}
                 className="input pr-10"
               />
               <button
@@ -133,14 +142,15 @@ export default function RegisterPage() {
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Confirmar contraseña
+              {t('register.confirm')}
             </label>
             <input
               type={show ? 'text' : 'password'}
               required
+              autoComplete="new-password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
-              placeholder="Repite tu contraseña"
+              placeholder={t('register.confirm_ph')}
               className="input"
             />
           </div>
@@ -153,14 +163,14 @@ export default function RegisterPage() {
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {loading ? 'Creando cuenta…' : 'Crear cuenta'}
+            {loading ? t('register.submitting') : t('register.submit')}
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-500">
-          ¿Ya tienes cuenta?{' '}
+          {t('register.has_account')}{' '}
           <Link href="/login" className="font-medium text-brand-600 hover:text-brand-700">
-            Inicia sesión
+            {t('register.signin')}
           </Link>
         </p>
 

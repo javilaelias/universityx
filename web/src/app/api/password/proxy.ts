@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { forwardedForHeader } from '@/lib/client-ip';
 
 const AUTH = process.env.AUTH_SERVICE_URL ?? 'http://localhost:4001';
 
@@ -18,11 +19,8 @@ export async function proxyPassword(req: NextRequest, path: string, fields: read
   const src = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
   const payload = Object.fromEntries(fields.filter((f) => f in src).map((f) => [f, src[f]]));
 
-  // El limitador de auth-service cuenta por IP: se pasa la del cliente tal como la anotó el
-  // último salto (el reverse proxy en staging), no la cadena completa que el cliente puede inventar.
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const clientIp = req.headers.get('x-forwarded-for')?.split(',').pop()?.trim();
-  if (clientIp) headers['X-Forwarded-For'] = clientIp;
+  // El limitador de auth-service cuenta por IP: se pasa la del cliente (ver client-ip.ts).
+  const headers = { 'Content-Type': 'application/json', ...forwardedForHeader(req.headers.get('x-forwarded-for')) };
 
   try {
     const upstream = await fetch(`${AUTH}/auth/${path}`, {

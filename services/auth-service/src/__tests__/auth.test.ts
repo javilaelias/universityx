@@ -15,6 +15,9 @@ vi.mock('../db/redis', () => ({
   validateRefreshToken: vi.fn().mockResolvedValue(true),
   revokeRefreshToken:   vi.fn().mockResolvedValue(undefined),
   revokeAllUserTokens:  vi.fn().mockResolvedValue(undefined),
+  countLoginAttempt:    vi.fn().mockResolvedValue(1),
+  clearLoginFailures:   vi.fn().mockResolvedValue(undefined),
+  LOGIN_MAX_ATTEMPTS:   5,
 }));
 
 // bcrypt with 12 rounds takes ~400ms per hash — mock for speed
@@ -26,6 +29,8 @@ vi.mock('../services/password.service', () => ({
 import { app } from '../app';
 import { query } from '../db/postgres';
 import { verifyPassword } from '../services/password.service';
+import { countLoginAttempt, clearLoginFailures } from '../db/redis';
+import { sha256 } from '../services/reset-token.service';
 
 const mockQuery = vi.mocked(query);
 const mockVerifyPassword = vi.mocked(verifyPassword);
@@ -63,7 +68,7 @@ describe('POST /auth/register', () => {
 
     const res = await request(app)
       .post('/auth/register')
-      .send({ email: 'test@example.com', password: 'password123', fullName: 'Test User' });
+      .send({ email: 'test@example.com', password: 'clave-segura-9', fullName: 'Test User' });
 
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('accessToken');
@@ -77,7 +82,7 @@ describe('POST /auth/register', () => {
 
     const res = await request(app)
       .post('/auth/register')
-      .send({ email: 'existing@example.com', password: 'password123', fullName: 'Test' });
+      .send({ email: 'existing@example.com', password: 'clave-segura-9', fullName: 'Test' });
 
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/ya está registrado/);
@@ -86,12 +91,12 @@ describe('POST /auth/register', () => {
   it('returns 400 for an invalid email', async () => {
     const res = await request(app)
       .post('/auth/register')
-      .send({ email: 'not-an-email', password: 'password123', fullName: 'Test' });
+      .send({ email: 'not-an-email', password: 'clave-segura-9', fullName: 'Test' });
 
     expect(res.status).toBe(400);
   });
 
-  it('returns 400 for a password shorter than 8 chars', async () => {
+  it('returns 400 for a password shorter than 10 chars', async () => {
     const res = await request(app)
       .post('/auth/register')
       .send({ email: 'test@example.com', password: 'short', fullName: 'Test' });
@@ -112,7 +117,7 @@ describe('POST /auth/login', () => {
 
     const res = await request(app)
       .post('/auth/login')
-      .send({ email: 'test@example.com', password: 'password123' });
+      .send({ email: 'test@example.com', password: 'clave-segura-9' });
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('accessToken');
@@ -139,7 +144,7 @@ describe('POST /auth/login', () => {
 
     const res = await request(app)
       .post('/auth/login')
-      .send({ email: 'nobody@example.com', password: 'password123' });
+      .send({ email: 'nobody@example.com', password: 'clave-segura-9' });
 
     expect(res.status).toBe(401);
   });
@@ -151,9 +156,82 @@ describe('POST /auth/login', () => {
 
     const res = await request(app)
       .post('/auth/login')
-      .send({ email: 'test@example.com', password: 'password123' });
+      .send({ email: 'test@example.com', password: 'clave-segura-9' });
 
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/desactivada/);
+  });
+});
+
+// ── Política de contraseñas ──────────────────────────────────────────────────
+
+describe('POST /auth/register — política de contraseñas', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it.each([
+    ['9 caracteres',         'abcdefg12'],
+    ['sin número',           'solo-letras-largas'],
+    ['sin letra',            '1234567890123'],
+    ['común',                'Password123'],
+    ['contiene el email',    'ana.perez-2026'],
+    ['más de 128',           'a1'.repeat(65)],
+  ])('400 si la contraseña es %s, sin tocar la BD', async (_c, password) => {
+    const res = await request(app)
+      .post('/auth/register')
+      .send({ email: 'ana.perez@example.com', password, fullName: 'Ana' });
+    expect(res.status).toBe(400);
+    expect(res.body.fields[0].field).toBe('password');
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+// ── Bloqueo temporal por intentos ─────────────────────────────────────────────
+
+describe('POST /auth/login — bloqueo temporal', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('429 ACCOUNT_LOCKED pasado el máximo de intentos, sin consultar BD ni bcrypt', async () => {
+    vi.mocked(countLoginAttempt).mockResolvedValueOnce(6);
+    const res = await request(app)
+      .post('/auth/login')
+      .send({ email: 'test@example.com', password: 'lo-que-sea' });
+    expect(res.status).toBe(429);
+    expect(res.body.code).toBe('ACCOUNT_LOCKED');
+    expect(countLoginAttempt).toHaveBeenCalledWith(sha256('test@example.com'));
+    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockVerifyPassword).not.toHaveBeenCalled();
+  });
+
+  it('el fallo que alcanza el máximo responde 429, también con un email inexistente', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 } as any);
+    vi.mocked(countLoginAttempt).mockResolvedValueOnce(5);
+    const res = await request(app)
+      .post('/auth/login')
+      .send({ email: 'nobody@example.com', password: 'x' });
+    expect(res.status).toBe(429);
+    expect(res.body.code).toBe('ACCOUNT_LOCKED');
+    expect(countLoginAttempt).toHaveBeenCalledWith(sha256('nobody@example.com'));
+  });
+
+  it('un fallo bajo el máximo responde 401 y no limpia el contador', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ ...validUser, password_hash: '$hashed$' }], rowCount: 1 } as any);
+    mockVerifyPassword.mockResolvedValueOnce(false);
+    const res = await request(app)
+      .post('/auth/login')
+      .send({ email: 'test@example.com', password: 'mala' });
+    expect(res.status).toBe(401);
+    expect(countLoginAttempt).toHaveBeenCalledTimes(1);
+    expect(clearLoginFailures).not.toHaveBeenCalled();
+  });
+
+  it('un login correcto limpia el contador', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ ...validUser, password_hash: '$hashed$' }], rowCount: 1 } as any)
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 } as any);
+    const res = await request(app)
+      .post('/auth/login')
+      .send({ email: 'test@example.com', password: 'clave-segura-9' });
+    expect(res.status).toBe(200);
+    expect(clearLoginFailures).toHaveBeenCalledWith(sha256('test@example.com'));
   });
 });

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-const schema = z.object({
+const DURATION = /^\d+[smhd]$/;
+
+export const envSchema = z.object({
   NODE_ENV:   z.enum(['development', 'test', 'production']).default('development'),
   PORT:       z.coerce.number().default(4001),
 
@@ -12,9 +14,10 @@ const schema = z.object({
 
   // JWT
   JWT_SECRET:              z.string().min(32),
-  JWT_EXPIRES_IN:          z.string().default('15m'),
+  // Formato <n><s|m|h|d>: el mismo valor fija la expiración del JWT, expiresIn y el TTL en Redis.
+  JWT_EXPIRES_IN:          z.string().regex(DURATION, 'Formato <n><s|m|h|d>, p. ej. 15m').default('15m'),
   JWT_REFRESH_SECRET:      z.string().min(32).optional(),
-  JWT_REFRESH_EXPIRES_IN:  z.string().default('7d'),
+  JWT_REFRESH_EXPIRES_IN:  z.string().regex(DURATION, 'Formato <n><s|m|h|d>, p. ej. 7d').default('7d'),
 
   // CORS
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
@@ -33,10 +36,18 @@ const schema = z.object({
 }).refine((e) => e.NODE_ENV !== 'production' || !!e.WEB_BASE_URL, {
   message: 'WEB_BASE_URL es obligatoria en production',
   path:    ['WEB_BASE_URL'],
+}).refine((e) => e.NODE_ENV !== 'production'
+  || (!!e.JWT_REFRESH_SECRET && e.JWT_REFRESH_SECRET !== e.JWT_SECRET), {
+  message: 'JWT_REFRESH_SECRET es obligatoria en production y distinta de JWT_SECRET',
+  path:    ['JWT_REFRESH_SECRET'],
+}).refine((e) => e.NODE_ENV !== 'production'
+  || !e.ALLOWED_ORIGINS.split(',').some((o) => o.trim() === '*'), {
+  message: 'ALLOWED_ORIGINS no admite * en production',
+  path:    ['ALLOWED_ORIGINS'],
 });
 
 function loadEnv() {
-  const result = schema.safeParse(process.env);
+  const result = envSchema.safeParse(process.env);
   if (!result.success) {
     console.error('❌  Variables de entorno inválidas:');
     console.error(result.error.flatten().fieldErrors);

@@ -1,15 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { query, withTransaction } from '../db/postgres';
-import { countResetRequest, revokeAllUserTokens } from '../db/redis';
+import { countResetRequest, revokeAllUserTokens, clearLoginFailures } from '../db/redis';
 import { hashPassword } from '../services/password.service';
 import { generateResetToken, sha256 } from '../services/reset-token.service';
+import { passwordSchema, containsEmailLocalPart } from '../services/password-policy';
 import { env, webBaseUrl } from '../config/env';
 
 const RESET_TTL_MINUTES      = 30;
 const MAX_REQUESTS_PER_HOUR  = 3;
 const GENERIC_MESSAGE        = 'Si el correo está registrado, te enviamos un enlace para restablecer la contraseña.';
 const INVALID_TOKEN_MESSAGE  = 'El enlace es inválido o venció. Solicita uno nuevo.';
+const EMAIL_IN_PASSWORD      = 'La contraseña no puede contener tu email';
 
 type Locale = 'es' | 'en';
 
@@ -22,7 +24,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token:    z.string().regex(/^[A-Za-z0-9_-]{43}$/, 'Token inválido'),
-  password: z.string().min(8, 'Mínimo 8 caracteres').max(128),
+  password: passwordSchema,
 });
 
 // ── POST /auth/forgot-password ────────────────────────────────────────────────
@@ -83,17 +85,22 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
   try {
     const { token, password } = req.body as z.infer<typeof resetPasswordSchema>;
 
-    const userId = await withTransaction(async (client) => {
+    const result = await withTransaction(async (client) => {
       // FOR UPDATE: de dos peticiones simultáneas con el mismo token, la segunda espera y, al
       // revalidar `used_at IS NULL`, ya no encuentra la fila → uso único.
-      const valid = await client.query<{ user_id: string }>(
-        `SELECT user_id FROM password_reset_tokens
-         WHERE  token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
-         FOR UPDATE`,
+      const valid = await client.query<{ user_id: string; email: string }>(
+        `SELECT t.user_id, u.email
+         FROM   password_reset_tokens t
+         JOIN   users u ON u.id = t.user_id
+         WHERE  t.token_hash = $1 AND t.used_at IS NULL AND t.expires_at > NOW()
+         FOR UPDATE OF t`,
         [sha256(token)]
       );
       const id = valid.rows[0]?.user_id;
       if (!id) return null;
+      const email = valid.rows[0].email;
+      // Misma regla que el registro; el token no se consume (puede intentar con otra).
+      if (containsEmailLocalPart(password, email)) return 'email-in-password' as const;
 
       // bcrypt solo con un token válido: un token inventado no cuesta un hash.
       const passwordHash = await hashPassword(password);
@@ -112,15 +119,25 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
         `UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL`,
         [id]
       );
-      return id;
+      return { id, email };
     });
 
-    if (!userId) {
+    if (!result) {
       res.status(400).json({ error: INVALID_TOKEN_MESSAGE });
       return;
     }
+    if (result === 'email-in-password') {
+      res.status(400).json({
+        error:  'Datos inválidos',
+        fields: [{ field: 'password', message: EMAIL_IN_PASSWORD }],
+      });
+      return;
+    }
 
-    await revokeAllUserTokens(userId);
+    await revokeAllUserTokens(result.id);
+    // La contraseña ya cambió (commit hecho): un fallo de Redis acá no debe responder 500.
+    await clearLoginFailures(sha256(result.email)).catch((err: Error) =>
+      console.error('[reset-password] clearLoginFailures', err.message));
     res.json({ message: 'Contraseña actualizada. Inicia sesión de nuevo.' });
   } catch (err) {
     next(err);

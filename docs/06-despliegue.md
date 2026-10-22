@@ -138,11 +138,29 @@ Fuera de los scripts: copiar `backups/` fuera del VPS (p. ej. `rclone copy` o `r
 volumen de videos procesados `ux_media_data` (`docker run --rm -v ux_media_data:/d -v "$PWD/backups":/b alpine
 tar czf /b/media-$(date +%F).tgz -C /d .`).
 
+**Seguridad de la cuenta y la sesión.**
+- Contraseñas nuevas (registro y reset): 10–128 caracteres, al menos una letra y un número, fuera de una lista
+  de comunes y sin la parte local del email. Las contraseñas ya guardadas siguen sirviendo para entrar.
+- Bloqueo temporal: 5 logins fallidos para un email en 15 min lo bloquean 15 min (429, exista o no la cuenta).
+  Un login correcto o un reset de contraseña lo levantan. Un tercero que conoce el email puede bloquearlo
+  15 min (riesgo aceptado). Para desbloquear a mano: `redis-cli DEL loginfail:<sha256 del email>`.
+- Rate limit por IP real: la web reenvía a auth-service la IP que anotó el reverse proxy (`X-Forwarded-For`).
+- Sesión web: el access JWT (15 min) se renueva solo antes de vencer con `/auth/refresh` (rotación); si el
+  refresh venció o se revocó, la web cierra la sesión. El refresh token no llega al navegador.
+- En production auth-service no arranca sin `JWT_REFRESH_SECRET` distinto de `JWT_SECRET` ni con `*` en
+  `ALLOWED_ORIGINS`; la web no usa un `NEXTAUTH_SECRET` por defecto. Los JWT se firman y verifican solo con HS256.
+- Cookies: con `NEXTAUTH_URL` en `https://…` NextAuth las emite `Secure` con prefijo `__Secure-`; por eso
+  el piloto se sirve por https (sección 3).
+- Headers de la web: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+  `Permissions-Policy`, CSP mínima (`frame-ancestors 'none'; base-uri 'self'; object-src 'none'`) y HSTS en
+  production. Comprobar: `curl -sI https://<dominio>/login`.
+
 ## 8. Checklist de secretos
 
 - [ ] `.env` existe solo en el servidor, con `chmod 600`; `git status` no lo muestra (está en `.gitignore`).
 - [ ] Ningún secreto con el valor de `.env.example` (`CHANGE_ME…`) ni con los defaults de desarrollo.
-- [ ] `JWT_SECRET`, `JWT_REFRESH_SECRET` y `NEXTAUTH_SECRET` distintos y de 32+ caracteres.
+- [ ] `JWT_SECRET`, `JWT_REFRESH_SECRET` y `NEXTAUTH_SECRET` distintos y de 32+ caracteres (auth-service no arranca si los dos JWT coinciden).
+- [ ] `NEXTAUTH_URL` con `https://` (cookies `Secure`).
 - [ ] Usuarios de prueba de la seed cambiados o desactivados.
 - [ ] Bases de datos sin puertos publicados y servicios solo en `127.0.0.1` (`dcs ps`: ningún `0.0.0.0`).
 

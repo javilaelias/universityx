@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/app-context';
+import { passwordPolicyError, failedPassword } from '@/lib/password-policy';
 
 function ResetPasswordContent() {
   const router  = useRouter();
@@ -37,8 +38,9 @@ function ResetPasswordContent() {
       setError(t('register.err_match'));
       return;
     }
-    if (password.length < 8) {
-      setError(t('register.err_short'));
+    const policyError = passwordPolicyError(password);
+    if (policyError) {
+      setError(t(policyError));
       return;
     }
 
@@ -53,8 +55,11 @@ function ResetPasswordContent() {
         router.push('/login?reset=1');
         return;
       }
-      // 400 = token inválido, vencido o ya usado. Otro error (429, 5xx): el token sigue sirviendo.
-      if (res.status === 400) setToken(null);
+      // 400 con fields[password] = la contraseña no pasó la política (el token sigue sirviendo).
+      // Otro 400 = token inválido, mal copiado, vencido o ya usado. Otro error (429, 5xx): reintentar.
+      const data = res.status === 400 ? await res.json().catch(() => ({})) : {};
+      if (res.status === 400 && failedPassword(data)) setError(t('register.err_policy'));
+      else if (res.status === 400) setToken(null);
       else setError(t('forgot.error'));
     } catch {
       setError(t('forgot.error'));

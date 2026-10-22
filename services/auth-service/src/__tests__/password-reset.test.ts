@@ -18,6 +18,7 @@ vi.mock('../db/redis', () => ({
   revokeRefreshToken:   vi.fn().mockResolvedValue(undefined),
   revokeAllUserTokens:  vi.fn().mockResolvedValue(undefined),
   countResetRequest:    vi.fn().mockResolvedValue(1),
+  clearLoginFailures:   vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../services/password.service', () => ({
@@ -27,7 +28,7 @@ vi.mock('../services/password.service', () => ({
 
 import { app } from '../app';
 import { query } from '../db/postgres';
-import { countResetRequest, revokeAllUserTokens } from '../db/redis';
+import { countResetRequest, revokeAllUserTokens, clearLoginFailures } from '../db/redis';
 import { hashPassword } from '../services/password.service';
 import { requestPasswordReset } from '../controllers/password-reset.controller';
 import { sha256 } from '../services/reset-token.service';
@@ -131,7 +132,7 @@ describe('requestPasswordReset', () => {
 describe('POST /auth/reset-password', () => {
   it('200: cambia la contraseña, invalida otros tokens y revoca sesiones', async () => {
     h.clientQuery
-      .mockResolvedValueOnce({ rows: [{ user_id: user.id }], rowCount: 1 }) // token válido (FOR UPDATE)
+      .mockResolvedValueOnce({ rows: [{ user_id: user.id, email: 'ana@x.test' }], rowCount: 1 }) // token válido (FOR UPDATE)
       .mockResolvedValueOnce({ rows: [], rowCount: 1 })                     // UPDATE credentials
       .mockResolvedValueOnce({ rows: [], rowCount: 1 });                    // consume todos
 
@@ -143,6 +144,7 @@ describe('POST /auth/reset-password', () => {
     expect(h.clientQuery.mock.calls[1][1]).toEqual([user.id, '$hashed$']);
     expect(h.clientQuery.mock.calls[2][0]).toMatch(/SET used_at = NOW\(\) WHERE user_id/);
     expect(mockRevoke).toHaveBeenCalledWith(user.id);
+    expect(vi.mocked(clearLoginFailures)).toHaveBeenCalledWith(sha256('ana@x.test')); // levanta el bloqueo
   });
 
   it('400 si el token es inválido, vencido o ya usado', async () => {
@@ -160,7 +162,7 @@ describe('POST /auth/reset-password', () => {
       if (/FOR UPDATE/.test(sql)) {
         if (consumed) return { rows: [], rowCount: 0 };
         consumed = true;
-        return { rows: [{ user_id: user.id }], rowCount: 1 };
+        return { rows: [{ user_id: user.id, email: 'ana@x.test' }], rowCount: 1 };
       }
       return { rows: [], rowCount: 1 };
     });
@@ -169,9 +171,28 @@ describe('POST /auth/reset-password', () => {
     expect(statuses).toEqual([200, 400]);
   });
 
+  it('400 de política si la contraseña contiene el email, sin consumir el token', async () => {
+    h.clientQuery.mockResolvedValueOnce({ rows: [{ user_id: user.id, email: 'ana.perez@x.test' }], rowCount: 1 });
+    const res = await request(app).post('/auth/reset-password').send({ token, password: 'ana.perez-2026' });
+    expect(res.status).toBe(400);
+    expect(res.body.fields[0].field).toBe('password');
+    expect(h.clientQuery).toHaveBeenCalledTimes(1); // ni UPDATE ni consumo
+    expect(mockHash).not.toHaveBeenCalled();
+  });
+
+  it('un fallo de Redis al limpiar el bloqueo no convierte el reset hecho en 500', async () => {
+    h.clientQuery
+      .mockResolvedValueOnce({ rows: [{ user_id: user.id, email: 'ana@x.test' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 });
+    vi.mocked(clearLoginFailures).mockRejectedValueOnce(new Error('redis caído'));
+    const res = await request(app).post('/auth/reset-password').send({ token, password: 'nueva-clave-1' });
+    expect(res.status).toBe(200);
+  });
+
   it('400 si la cuenta está inactiva o no tiene contraseña local', async () => {
     h.clientQuery
-      .mockResolvedValueOnce({ rows: [{ user_id: user.id }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ user_id: user.id, email: 'ana@x.test' }], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [], rowCount: 0 });
     const res = await request(app).post('/auth/reset-password').send({ token, password: 'nueva-clave-1' });
     expect(res.status).toBe(400);
@@ -181,6 +202,8 @@ describe('POST /auth/reset-password', () => {
   it.each([
     ['contraseña corta',  { token, password: 'corta' }],
     ['token mal formado', { token: 'abc', password: 'nueva-clave-1' }],
+    ['contraseña sin número', { token, password: 'solo-letras-largas' }],
+    ['contraseña común',  { token, password: 'Password123' }],
   ])('400 por %s', async (_c, body) => {
     const res = await request(app).post('/auth/reset-password').send(body);
     expect(res.status).toBe(400);
