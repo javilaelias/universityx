@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession }          from 'next-auth';
 import { authOptions }               from '@/lib/auth';
+import { toQuiz }                    from '@/lib/lms-shape';
 
 const LMS = process.env.LMS_SERVICE_URL ?? 'http://localhost:4002';
 
@@ -16,5 +17,5 @@ export async function GET(
   });
 
   const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  return NextResponse.json(res.ok ? toQuiz(data) : data, { status: res.status });
 }

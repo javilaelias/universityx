@@ -20,12 +20,18 @@
 - **Panel admin:** `/admin` (rol admin) — usuarios (listar, crear, rol, activar/desactivar; revoca sesiones, protege último admin), todos los cursos (publicar/despublicar) y cola de tickets staff; endpoints con `requireRole` en auth/lms/helpdesk; `PATCH /courses/:id` con dueño/admin + lista blanca (2026-10-21).
 - **Marca configurable:** bloque `BRAND_*` del `.env` (nombre, color primario → paleta `brand-*`, logo, favicon, ícono PWA, pie) leído en runtime por web, emails y certificado PDF; vacío = Universidad X (`docs/07-marca.md`, 2026-10-21).
 - **Calidad:** Vitest en auth, lms, credentials, media, notification; CI/CD GitHub Actions (ci, cd, release).
+- **E2E (Playwright):** `e2e/` — flujo crítico (login → matrícula → contenido → quiz → certificado → `/verify`), recuperar contraseña, smoke `/admin`, ES/EN + tema; job `e2e` en `ci.yml`. Arregló curso/quiz rotos en la web (adaptadores BFF `lib/lms-shape.ts`), "Reclamar credenciales" (`POST /credentials` sin body, IDOR cerrado) y el atajo de quiz por `/progress` (2026-10-21).
 
 ## Pendientes v1.0
 
 Ver `cola-trabajo.md` (driver headless, se corre con `D:\JuvinFactory\juvinciclo.bat`).
 
 ## Hallazgos
+
+- La web no tiene visor de contenido ni "marcar como visto": un alumno no llega al 100 % desde la UI (la E2E usa `/api/progress`).
+- Páginas de curso, quiz y perfil sin i18n; tema por defecto `light` en vez de `prefers-color-scheme`.
+- credentials: `badges` sin UNIQUE(course_id) y emisión sin transacción (posible credencial duplicada con reclamos simultáneos).
+- `.gitattributes` fuerza LF en `*.sh`: un clon viejo en Windows con `init-db.sh` en CRLF no inicializa la BD (re-checkout).
 
 - credentials, media, notification y sync verifican JWT sin fijar `algorithms` (auth, lms y helpdesk ya usan HS256 fijo).
 - Panel admin sin smoke en navegador real (solo estático) y sin auditoría de acciones; desactivar deja vivo el access JWT ≤ 15 min.

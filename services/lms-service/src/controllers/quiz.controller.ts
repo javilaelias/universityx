@@ -77,7 +77,7 @@ export async function submitQuiz(req: Request, res: Response, next: NextFunction
           )
         );
         const courseId = rows[0]?.course_id;
-        if (courseId) enrollRepo.updateProgressPct(userId, courseId).catch(console.error);
+        if (courseId) await enrollRepo.updateProgressPct(userId, courseId).catch(console.error);
       }
     }
 
@@ -86,6 +86,8 @@ export async function submitQuiz(req: Request, res: Response, next: NextFunction
         id:           attempt.id,
         score:        attempt.score,
         passed:       attempt.passed,
+        correct:      attempt.correct,
+        total:        attempt.total,
         submitted_at: attempt.submitted_at,
       },
       message: attempt.passed

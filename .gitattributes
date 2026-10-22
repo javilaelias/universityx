@@ -1,0 +1,2 @@
+# Scripts que corren dentro de contenedores Linux (init-db.sh) o en CI: siempre LF.
+*.sh text eol=lf

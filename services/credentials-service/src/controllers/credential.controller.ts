@@ -6,87 +6,131 @@ import { streamCertificatePDF }  from '../lib/certificate-pdf';
 import { env }                   from '../config/env';
 import type { AuthRequest }      from '../middleware/auth';
 
+// userId solo lo indica un admin (por defecto, el del token); sin courseId se emiten todas las
+// matrículas al 100 % que aún no tienen credencial ("Reclamar" del perfil).
 const issueSchema = z.object({
-  userId:   z.string().uuid(),
-  courseId: z.string().uuid(),
+  userId:   z.string().uuid().optional(),
+  courseId: z.string().uuid().optional(),
 });
+
+type IssueResult = { status: number; body: Record<string, unknown> };
+
+async function issueOne(userId: string, courseId: string): Promise<IssueResult> {
+  // Check enrollment progress
+  const { rows: [enrollment] } = await pool.query(
+    `SELECT e.progress_pct, u.email, u.full_name, c.title, c.description
+     FROM   enrollments e
+     JOIN   users   u ON u.id = e.user_id
+     JOIN   courses c ON c.id = e.course_id
+     WHERE  e.user_id = $1 AND e.course_id = $2`,
+    [userId, courseId],
+  );
+
+  if (!enrollment) return { status: 404, body: { message: 'Matrícula no encontrada' } };
+  if (Number(enrollment.progress_pct) < 100) {
+    return { status: 422, body: { message: `Curso incompleto (${enrollment.progress_pct}%). Se requiere 100%.` } };
+  }
+
+  // Check if already issued
+  const { rows: [existing] } = await pool.query(
+    `SELECT ub.id FROM user_badges ub
+     JOIN badges b ON b.id = ub.badge_id
+     WHERE ub.user_id = $1 AND b.course_id = $2`,
+    [userId, courseId],
+  );
+  if (existing) return { status: 409, body: { message: 'Credencial ya emitida' } };
+
+  // Ensure a badge row exists for this course
+  const { rows: [badge] } = await pool.query(
+    `INSERT INTO badges (name, description, course_id, source, criteria)
+     VALUES ($1, $2, $3, 'internal', $4)
+     ON CONFLICT DO NOTHING
+     RETURNING id`,
+    [
+      enrollment.title,
+      `Insignia por completar el curso "${enrollment.title}"`,
+      courseId,
+      JSON.stringify({ narrative: 'Completar todos los módulos con ≥60% en quizzes.' }),
+    ],
+  );
+
+  const badgeId = badge?.id ?? (await pool.query(
+    `SELECT id FROM badges WHERE course_id = $1`, [courseId]
+  )).rows[0].id;
+
+  // Build the Open Badge 3.0 credential
+  const credential = buildOpenBadge({
+    userId,
+    userEmail:  enrollment.email,
+    courseId,
+    courseName: enrollment.title,
+    courseDesc: enrollment.description,
+  });
+
+  // Persist in user_badges
+  const { rows: [userBadge] } = await pool.query(
+    `INSERT INTO user_badges (user_id, badge_id, is_public)
+     VALUES ($1, $2, true)
+     RETURNING id, issued_at`,
+    [userId, badgeId],
+  );
+
+  // Mark enrollment as certificate issued
+  await pool.query(
+    `UPDATE enrollments SET certificate_issued = true WHERE user_id = $1 AND course_id = $2`,
+    [userId, courseId],
+  );
+
+  return { status: 201, body: { userBadgeId: userBadge.id, issuedAt: userBadge.issued_at, credential } };
+}
+
+// POST /credentials — una matrícula (courseId) o todas las elegibles del usuario
+async function issueHandler(req: AuthRequest, res: Response) {
+  const parsed = issueSchema.safeParse(req.body ?? {});
+  if (!parsed.success) { res.status(400).json({ message: 'Datos inválidos', errors: parsed.error.flatten() }); return; }
+
+  const { courseId } = parsed.data;
+  const userId = parsed.data.userId ?? req.userId!;
+  if (userId !== req.userId && req.userRole !== 'admin') {
+    res.status(403).json({ message: 'Solo un administrador emite credenciales a nombre de otro usuario' });
+    return;
+  }
+
+  if (courseId) {
+    const result = await issueOne(userId, courseId);
+    res.status(result.status).json(result.body);
+    return;
+  }
+
+  const { rows: eligible } = await pool.query(
+    `SELECT e.course_id
+     FROM   enrollments e
+     WHERE  e.user_id = $1 AND e.progress_pct >= 100
+       AND  NOT EXISTS (SELECT 1 FROM user_badges ub JOIN badges b ON b.id = ub.badge_id
+                        WHERE ub.user_id = e.user_id AND b.course_id = e.course_id)`,
+    [userId],
+  );
+
+  const issued: Record<string, unknown>[] = [];
+  for (const { course_id } of eligible) {
+    const result = await issueOne(userId, course_id);
+    if (result.status === 201) issued.push(result.body);
+  }
+
+  if (issued.length === 0) { res.status(422).json({ message: 'No hay nuevas credenciales disponibles.' }); return; }
+  res.status(201).json({ issued });
+}
 
 export const credentialCtrl = {
 
-  // POST /credentials/issue — called by lms-service on course completion
+  // POST /credentials (ver issueHandler); Express 4 no captura rechazos de handlers async
   async issue(req: AuthRequest, res: Response) {
-    const parsed = issueSchema.safeParse(req.body);
-    if (!parsed.success) { res.status(400).json({ message: 'Datos inválidos', errors: parsed.error.flatten() }); return; }
-
-    const { userId, courseId } = parsed.data;
-
-    // Check enrollment progress
-    const { rows: [enrollment] } = await pool.query(
-      `SELECT e.progress_pct, u.email, u.full_name, c.title, c.description
-       FROM   enrollments e
-       JOIN   users   u ON u.id = e.user_id
-       JOIN   courses c ON c.id = e.course_id
-       WHERE  e.user_id = $1 AND e.course_id = $2`,
-      [userId, courseId],
-    );
-
-    if (!enrollment) { res.status(404).json({ message: 'Matrícula no encontrada' }); return; }
-    if (Number(enrollment.progress_pct) < 100) {
-      res.status(422).json({ message: `Curso incompleto (${enrollment.progress_pct}%). Se requiere 100%.` });
-      return;
+    try {
+      await issueHandler(req, res);
+    } catch (err) {
+      console.error('[credentials] issue', err);
+      if (!res.headersSent) res.status(500).json({ message: 'No se pudo emitir la credencial' });
     }
-
-    // Check if already issued
-    const { rows: [existing] } = await pool.query(
-      `SELECT ub.id FROM user_badges ub
-       JOIN badges b ON b.id = ub.badge_id
-       WHERE ub.user_id = $1 AND b.course_id = $2`,
-      [userId, courseId],
-    );
-    if (existing) { res.status(409).json({ message: 'Credencial ya emitida' }); return; }
-
-    // Ensure a badge row exists for this course
-    const { rows: [badge] } = await pool.query(
-      `INSERT INTO badges (name, description, course_id, source, criteria)
-       VALUES ($1, $2, $3, 'internal', $4)
-       ON CONFLICT DO NOTHING
-       RETURNING id`,
-      [
-        enrollment.title,
-        `Insignia por completar el curso "${enrollment.title}"`,
-        courseId,
-        JSON.stringify({ narrative: 'Completar todos los módulos con ≥60% en quizzes.' }),
-      ],
-    );
-
-    const badgeId = badge?.id ?? (await pool.query(
-      `SELECT id FROM badges WHERE course_id = $1`, [courseId]
-    )).rows[0].id;
-
-    // Build the Open Badge 3.0 credential
-    const credential = buildOpenBadge({
-      userId,
-      userEmail:  enrollment.email,
-      courseId,
-      courseName: enrollment.title,
-      courseDesc: enrollment.description,
-    });
-
-    // Persist in user_badges
-    const { rows: [userBadge] } = await pool.query(
-      `INSERT INTO user_badges (user_id, badge_id, is_public)
-       VALUES ($1, $2, true)
-       RETURNING id, issued_at`,
-      [userId, badgeId],
-    );
-
-    // Mark enrollment as certificate issued
-    await pool.query(
-      `UPDATE enrollments SET certificate_issued = true WHERE user_id = $1 AND course_id = $2`,
-      [userId, courseId],
-    );
-
-    res.status(201).json({ userBadgeId: userBadge.id, issuedAt: userBadge.issued_at, credential });
   },
 
   // GET /credentials — list user's credentials

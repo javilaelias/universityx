@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { toCourseDetail } from '@/lib/lms-shape';
 
 const LMS = process.env.LMS_SERVICE_URL ?? 'http://localhost:4002';
 
@@ -10,11 +11,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const res = await fetch(`${LMS}/api/courses/${params.id}`, {
     headers: { Authorization: `Bearer ${session.accessToken}` },
-    next:    { revalidate: 120 },
+    cache:   'no-store', // trae `enrolled` del usuario
   });
 
   const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  return NextResponse.json(res.ok ? toCourseDetail(data) : data, { status: res.status });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

@@ -51,7 +51,7 @@ export async function gradeAndSaveAttempt(
   quizId: string,
   answers: Record<string, string>,
   passingScore: number
-): Promise<QuizAttempt> {
+): Promise<QuizAttempt & { correct: number; total: number }> {
   return withTransaction(async (client) => {
     // Obtener respuestas correctas
     const { rows: correctOptions } = await client.query<{ question_id: string; option_id: string; points: number }>(
@@ -66,11 +66,14 @@ export async function gradeAndSaveAttempt(
     const totalPoints = correctOptions.reduce((s, r) => s + Number(r.points), 0);
     let earnedPoints  = 0;
 
+    const correctQuestions = new Set<string>();
     for (const { question_id, option_id, points } of correctOptions) {
       if (answers[question_id] === option_id) {
         earnedPoints += Number(points);
+        correctQuestions.add(question_id);
       }
     }
+    const total = new Set(correctOptions.map((r) => r.question_id)).size;
 
     const score  = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100 * 100) / 100 : 0;
     const passed = score >= passingScore;
@@ -81,7 +84,7 @@ export async function gradeAndSaveAttempt(
       [userId, contentItemId, JSON.stringify(answers), score, passed]
     );
 
-    return rows[0];
+    return { ...rows[0], correct: correctQuestions.size, total };
   });
 }
 

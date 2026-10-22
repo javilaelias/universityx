@@ -51,6 +51,21 @@ desarrollo local; en un piloto real se cambian todos: ver [`docs/06-despliegue.m
 Vitest en los servicios Node: `cd services/<servicio> && npm test` (auth, lms, credentials, media).
 CI en `.github/workflows/` (`ci.yml`, `cd.yml`, `release.yml`).
 
+### E2E (Playwright)
+
+`e2e/` recorre en Chromium el flujo crítico (registro/login → matrícula → contenido → quiz → certificado →
+`/verify` público), recuperar contraseña, un smoke de `/admin` e idioma ES/EN + tema claro/oscuro.
+
+```bash
+docker compose up -d --wait web          # pila completa con la BD sembrada (migraciones 004/005)
+cd e2e && npm ci && npx playwright install chromium
+npx playwright test                      # E2E_BASE_URL y E2E_DATABASE_URL si no son los de dev
+```
+
+- Crea usuarios propios (`*@e2e.test`) en cada corrida y siembra en Postgres el token de recuperación (el correo
+  va a consola). Úsala contra una BD de desarrollo o descartable, nunca contra la de un cliente.
+- En CI corre en el job `e2e` de `ci.yml` con `.env` de servicios descartables (`e2e/ci-env.sh`).
+
 ## Documentación
 
 - [`docs/01-architecture.md`](docs/01-architecture.md) — arquitectura y flujos (SSO, sync offline).

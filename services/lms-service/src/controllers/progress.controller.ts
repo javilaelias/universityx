@@ -41,6 +41,12 @@ export async function updateProgress(req: Request, res: Response, next: NextFunc
       res.status(404).json({ error: 'Contenido no encontrado' });
       return;
     }
+    // Un quiz solo se completa aprobándolo (POST /quizzes/:id/submit): si no, el certificado
+    // se podría reclamar sin rendirlo.
+    if (contentItem.type === 'quiz' && data.completed) {
+      res.status(422).json({ error: 'El quiz se completa al aprobarlo' });
+      return;
+    }
 
     const progress = await progressRepo.upsertProgress({
       userId,
@@ -51,7 +57,7 @@ export async function updateProgress(req: Request, res: Response, next: NextFunc
       idempotencyKey:  data.idempotencyKey,
     });
 
-    // Recalcular progreso del curso en background (no bloquea la respuesta)
+    // Recalcular progreso del curso antes de responder (el certificado se reclama con ese %)
     const { rows } = await import('../db/postgres').then((m) =>
       m.query<{ course_id: string }>(
         'SELECT course_id FROM modules WHERE id = (SELECT module_id FROM content_items WHERE id = $1)',
@@ -60,7 +66,7 @@ export async function updateProgress(req: Request, res: Response, next: NextFunc
     );
     const courseId = rows[0]?.course_id;
     if (courseId) {
-      enrollRepo.updateProgressPct(userId, courseId).catch(console.error);
+      await enrollRepo.updateProgressPct(userId, courseId).catch(console.error);
     }
 
     res.json({ progress });

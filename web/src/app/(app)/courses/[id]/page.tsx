@@ -28,7 +28,7 @@ export default function CourseDetailPage() {
   useEffect(() => {
     fetch(`/api/courses/${id}`)
       .then(r => r.json())
-      .then(d => setCourse(d.course))
+      .then(d => { setCourse(d.course); setEnrolled(Boolean(d.course?.enrolled)); })
       .catch(() => setMsg('No se pudo cargar el curso.'))
       .finally(() => setLoading(false));
   }, [id]);
