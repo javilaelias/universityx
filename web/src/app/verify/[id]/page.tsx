@@ -1,4 +1,5 @@
 import { Award, CheckCircle, Download, ExternalLink } from 'lucide-react';
+import { getBrand } from '@/lib/brand-server';
 
 const CRED_URL = process.env.CREDENTIALS_SERVICE_URL ?? 'http://localhost:4007';
 
@@ -32,6 +33,7 @@ async function fetchCredential(id: string): Promise<CredentialPayload | null> {
 }
 
 export default async function VerifyPage({ params }: { params: { id: string } }) {
+  const brand = getBrand();
   const data = await fetchCredential(params.id);
 
   if (!data) {
@@ -45,7 +47,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
           <p className="text-sm text-gray-500 dark:text-gray-400">
             El ID proporcionado no corresponde a ninguna credencial válida o ha sido revocada.
           </p>
-          <a href="/" className="text-green-600 dark:text-green-400 text-sm hover:underline">
+          <a href="/" className="text-brand-600 dark:text-brand-400 text-sm hover:underline">
             Volver al inicio
           </a>
         </div>
@@ -61,16 +63,16 @@ export default async function VerifyPage({ params }: { params: { id: string } })
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-emerald-700 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
 
         {/* Certificate card */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
 
           {/* Header */}
-          <div className="bg-green-600 px-8 py-6 text-center">
-            <p className="text-2xl font-bold text-white">Universidad X</p>
-            <p className="text-green-200 text-sm mt-1">Plataforma de Aprendizaje Adaptativo</p>
+          <div className="bg-brand-600 px-8 py-6 text-center">
+            <p className="text-2xl font-bold text-white">{brand.name}</p>
+            <p className="text-brand-200 text-sm mt-1">{brand.tagline}</p>
           </div>
 
           {/* Body */}
@@ -92,7 +94,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
 
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">completó satisfactoriamente el curso</p>
-              <p className="text-lg font-semibold text-green-700 dark:text-green-400 mt-1">{courseName}</p>
+              <p className="text-lg font-semibold text-brand-700 dark:text-brand-400 mt-1">{courseName}</p>
             </div>
 
             <div>
@@ -109,7 +111,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
             </div>
             <a
               href={`/api/credentials/${params.id}/pdf`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               Descargar PDF

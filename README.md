@@ -59,4 +59,5 @@ CI en `.github/workflows/` (`ci.yml`, `cd.yml`, `release.yml`).
 - [`docs/04-roadmap.md`](docs/04-roadmap.md) — roadmap.
 - [`docs/05-manual-usuario.md`](docs/05-manual-usuario.md) — manual de usuario.
 - [`docs/06-despliegue.md`](docs/06-despliegue.md) — despliegue en un VPS (`docker-compose.staging.yml`, secretos por `.env`).
+- [`docs/07-marca.md`](docs/07-marca.md) — marca configurable (white-label) por el bloque `BRAND_*` del `.env`.
 - [`PROGRESS.md`](PROGRESS.md) — registro histórico hasta 2026-06-17 (congelado).

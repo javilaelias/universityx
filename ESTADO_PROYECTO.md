@@ -18,6 +18,7 @@
 - **Recuperar contraseña:** `POST /auth/forgot-password` (202 genérico, límite 3/h por email) y `/auth/reset-password` (token un solo uso, SHA-256 en BD, 30 min, revoca sesiones); páginas `/forgot-password` y `/reset-password`; migración 008 manual en BD existente (2026-10-21).
 - **Auth endurecida:** política de contraseñas (10+, letra y número, sin comunes ni email), bloqueo 15 min tras 5 fallos por email, renovación del access JWT en la web (`SessionKeeper`, refresh fuera del navegador), secretos y CORS validados en production, HS256 fijo y headers de seguridad en la web (2026-10-21).
 - **Panel admin:** `/admin` (rol admin) — usuarios (listar, crear, rol, activar/desactivar; revoca sesiones, protege último admin), todos los cursos (publicar/despublicar) y cola de tickets staff; endpoints con `requireRole` en auth/lms/helpdesk; `PATCH /courses/:id` con dueño/admin + lista blanca (2026-10-21).
+- **Marca configurable:** bloque `BRAND_*` del `.env` (nombre, color primario → paleta `brand-*`, logo, favicon, ícono PWA, pie) leído en runtime por web, emails y certificado PDF; vacío = Universidad X (`docs/07-marca.md`, 2026-10-21).
 - **Calidad:** Vitest en auth, lms, credentials, media, notification; CI/CD GitHub Actions (ci, cd, release).
 
 ## Pendientes v1.0
@@ -30,7 +31,8 @@ Ver `cola-trabajo.md` (driver headless, se corre con `D:\JuvinFactory\juvinciclo
 - Panel admin sin smoke en navegador real (solo estático) y sin auditoría de acciones; desactivar deja vivo el access JWT ≤ 15 min.
 - `/notifications/trigger` sin auth (solo red interna; staging lo publica en 127.0.0.1).
 - notification-service sin FCM; el token del dispositivo no se registra.
-- Marca fija en código.
+- Android sin marca configurable (nombre e íconos nativos fijos).
+- `navigateFallback: '/offline'` de la PWA apunta a una URL que el SW no precachea (preexistente).
 - Email solo por consola en dev.
 - `cd.yml` arma `.env.staging` en el runner y no lo copia al VPS (manda el `.env` del servidor).
 - SSO SAML/OIDC: stub, sin IdP real.

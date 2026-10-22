@@ -4,13 +4,16 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/app-context';
+import BrandLogo from '@/components/BrandLogo';
+import { brandFooter, useBrand } from '@/contexts/brand-context';
 import { passwordPolicyError, failedPassword } from '@/lib/password-policy';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { t }  = useLang();
+  const brand  = useBrand();
 
   const [fullName,  setFullName]  = useState('');
   const [email,     setEmail]     = useState('');
@@ -76,11 +79,11 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600">
-            <BookOpen className="h-7 w-7 text-white" />
+            <BrandLogo className="h-7 w-7 text-white" />
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('register.title')}</h1>
-            <p className="mt-1 text-sm text-gray-500">{t('register.subtitle')}</p>
+            <p className="mt-1 text-sm text-gray-500">{brand.name} · {t('register.subtitle')}</p>
           </div>
         </div>
 
@@ -175,7 +178,7 @@ export default function RegisterPage() {
         </p>
 
         <p className="text-center text-xs text-gray-400">
-          Universidad X © {new Date().getFullYear()}
+          {brandFooter(brand)}
         </p>
       </div>
     </div>

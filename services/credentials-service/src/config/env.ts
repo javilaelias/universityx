@@ -6,7 +6,11 @@ const schema = z.object({
   DATABASE_URL: z.string(),
   JWT_SECRET:   z.string(),
   ISSUER_URL:   z.string().default('https://universidadx.com'),
-  ISSUER_NAME:  z.string().default('Universidad X'),
+  // Vacío = BRAND_NAME (marca configurable) o 'Universidad X'.
+  ISSUER_NAME:  z.preprocess(
+    v => (typeof v === 'string' && v.trim() ? v.trim() : process.env.BRAND_NAME?.trim() || 'Universidad X'),
+    z.string(),
+  ),
   NODE_ENV:     z.enum(['development', 'production', 'test']).default('development'),
 });
 

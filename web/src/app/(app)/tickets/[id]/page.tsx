@@ -5,6 +5,7 @@ import { useParams, useRouter }         from 'next/navigation';
 import { useSession }                   from 'next-auth/react';
 import { ArrowLeft, Loader2, Send, User } from 'lucide-react';
 import clsx from 'clsx';
+import { useBrand } from '@/contexts/brand-context';
 
 interface Message {
   id:          string;
@@ -43,6 +44,7 @@ export default function TicketDetailPage() {
   const { id }            = useParams<{ id: string }>();
   const router            = useRouter();
   const { data: session } = useSession();
+  const brand             = useBrand();
   const [ticket,   setTicket]   = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -148,7 +150,7 @@ export default function TicketDetailPage() {
                 )}>
                   {!isMe && (
                     <p className={clsx('mb-1 text-xs font-semibold', isSupport ? 'text-brand-600' : 'text-[var(--muted)]')}>
-                      {isSupport ? 'Soporte Universidad X' : msg.author_name}
+                      {isSupport ? `Soporte ${brand.name}` : msg.author_name}
                     </p>
                   )}
                   <p className="whitespace-pre-wrap leading-relaxed">{msg.body}</p>

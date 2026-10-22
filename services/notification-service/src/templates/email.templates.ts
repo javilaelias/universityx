@@ -1,3 +1,5 @@
+import { brand as defaultBrand, type Brand } from '../config/brand';
+
 export type NotificationEvent =
   | 'enrollment.confirmed'
   | 'quiz.passed'
@@ -19,7 +21,7 @@ interface EmailTemplate {
 }
 
 type Data    = Record<string, unknown>;
-type Builder = (d: Data) => EmailTemplate;
+type Builder = (d: Data, b: Brand) => EmailTemplate;
 
 const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
@@ -39,6 +41,14 @@ function text(value: unknown): string {
 }
 
 const link = (url: string, label: string) => (url ? `<p><a href="${url}">${label}</a></p>` : '');
+
+// Envoltura de marca: logo opcional arriba, color primario en enlaces y pie gris.
+function wrap(html: string, b: Brand): string {
+  const color = escapeHtml(b.primaryColor);
+  const logo  = b.logoUrl ? `<p><img src="${escapeHtml(b.logoUrl)}" alt="${escapeHtml(b.name)}" style="max-height:48px"></p>` : '';
+  const body  = html.replace(/<a href=/g, `<a style="color:${color}" href=`);
+  return `${logo}${body}<p style="color:#888888;font-size:12px">${escapeHtml(b.footerText)}</p>`;
+}
 
 const TEMPLATES: Record<Locale, Record<NotificationEvent, Builder>> = {
   es: {
@@ -77,8 +87,8 @@ const TEMPLATES: Record<Locale, Record<NotificationEvent, Builder>> = {
       html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>Completaste <strong>${escapeHtml(d.courseTitle)}</strong> y tu certificado fue emitido. ¡Felicidades!</p>${link(safeUrl(d.certificateUrl), 'Ver certificado')}`,
       inApp:   { title: 'Certificado emitido', body: `Tu certificado de "${text(d.courseTitle)}" está disponible` },
     }),
-    'auth.password_reset': d => ({
-      subject: 'Restablece tu contraseña de Universidad X',
+    'auth.password_reset': (d, b) => ({
+      subject: `Restablece tu contraseña de ${text(b.name)}`,
       html:    `<p>Hola ${escapeHtml(d.userName)},</p><p>Recibimos una solicitud para restablecer tu contraseña. El enlace vence en ${escapeHtml(d.expiresMinutes)} minutos y sirve una sola vez.</p>${link(safeUrl(d.resetUrl), 'Restablecer contraseña')}<p>Si no fuiste tú, ignora este correo: tu contraseña no cambia.</p>`,
       inApp:   { title: 'Restablecer contraseña', body: 'Revisa tu correo' },
     }),
@@ -119,8 +129,8 @@ const TEMPLATES: Record<Locale, Record<NotificationEvent, Builder>> = {
       html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>You completed <strong>${escapeHtml(d.courseTitle)}</strong> and your certificate has been issued. Congratulations!</p>${link(safeUrl(d.certificateUrl), 'View certificate')}`,
       inApp:   { title: 'Certificate issued', body: `Your certificate for "${text(d.courseTitle)}" is available` },
     }),
-    'auth.password_reset': d => ({
-      subject: 'Reset your Universidad X password',
+    'auth.password_reset': (d, b) => ({
+      subject: `Reset your ${text(b.name)} password`,
       html:    `<p>Hi ${escapeHtml(d.userName)},</p><p>We received a request to reset your password. The link expires in ${escapeHtml(d.expiresMinutes)} minutes and works only once.</p>${link(safeUrl(d.resetUrl), 'Reset password')}<p>If this wasn't you, ignore this email: your password stays the same.</p>`,
       inApp:   { title: 'Reset password', body: 'Check your email' },
     }),
@@ -128,22 +138,25 @@ const TEMPLATES: Record<Locale, Record<NotificationEvent, Builder>> = {
 };
 
 const GENERIC: Record<Locale, Builder> = {
-  es: () => ({
-    subject: 'Nueva notificación de Universidad X',
-    html:    '<p>Tienes una nueva notificación en Universidad X.</p>',
+  es: (_d, b) => ({
+    subject: `Nueva notificación de ${text(b.name)}`,
+    html:    `<p>Tienes una nueva notificación en ${escapeHtml(b.name)}.</p>`,
     inApp:   { title: 'Nueva notificación', body: 'Tienes una nueva notificación' },
   }),
-  en: () => ({
-    subject: 'New notification from Universidad X',
-    html:    '<p>You have a new notification on Universidad X.</p>',
+  en: (_d, b) => ({
+    subject: `New notification from ${text(b.name)}`,
+    html:    `<p>You have a new notification on ${escapeHtml(b.name)}.</p>`,
     inApp:   { title: 'New notification', body: 'You have a new notification' },
   }),
 };
 
 // Evento desconocido → plantilla genérica; locale desconocido → español.
-export function buildTemplate(event: string, data: Data, locale: string = DEFAULT_LOCALE): EmailTemplate {
+export function buildTemplate(
+  event: string, data: Data, locale: string = DEFAULT_LOCALE, b: Brand = defaultBrand,
+): EmailTemplate {
   const lang: Locale = (LOCALES as readonly string[]).includes(locale) ? (locale as Locale) : DEFAULT_LOCALE;
   const byEvent = TEMPLATES[lang] as Record<string, Builder>;
   const builder = Object.prototype.hasOwnProperty.call(byEvent, event) ? byEvent[event] : GENERIC[lang];
-  return builder(data);
+  const tpl = builder(data, b);
+  return { ...tpl, html: wrap(tpl.html, b) };
 }

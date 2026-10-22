@@ -31,7 +31,7 @@ const es = {
 
   // Register
   'register.title':      'Crear cuenta',
-  'register.subtitle':   'Universidad X · Plataforma adaptativa',
+  'register.subtitle':   'Plataforma adaptativa',
   'register.fullname':   'Nombre completo',
   'register.email':      'Correo electrónico',
   'register.password':   'Contraseña',
@@ -162,7 +162,7 @@ const en: Record<keyof typeof es, string> = {
   'login.registered':  'Account created! Sign in.',
 
   'register.title':      'Create account',
-  'register.subtitle':   'Universidad X · Adaptive platform',
+  'register.subtitle':   'Adaptive platform',
   'register.fullname':   'Full name',
   'register.email':      'Email',
   'register.password':   'Password',

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, Loader2, MailCheck } from 'lucide-react';
+import { Loader2, MailCheck } from 'lucide-react';
+import BrandLogo from '@/components/BrandLogo';
 import { useLang } from '@/contexts/app-context';
 
 export default function ForgotPasswordPage() {
@@ -40,7 +41,7 @@ export default function ForgotPasswordPage() {
 
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600">
-            <BookOpen className="h-7 w-7 text-white" />
+            <BrandLogo className="h-7 w-7 text-white" />
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('forgot.title')}</h1>

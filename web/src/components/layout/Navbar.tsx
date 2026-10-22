@@ -3,9 +3,11 @@
 import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, GraduationCap, Shield, LayoutDashboard, LogOut, Moon, PenSquare, Sun, TicketCheck, User } from 'lucide-react';
+import { GraduationCap, Shield, LayoutDashboard, LogOut, Moon, PenSquare, Sun, TicketCheck, User } from 'lucide-react';
 import clsx from 'clsx';
 import NotificationBell from './NotificationBell';
+import BrandLogo from '@/components/BrandLogo';
+import { useBrand } from '@/contexts/brand-context';
 import { useTheme, useLang } from '@/contexts/app-context';
 
 export default function Navbar() {
@@ -13,6 +15,7 @@ export default function Navbar() {
   const path = usePathname();
   const { theme, toggle: toggleTheme } = useTheme();
   const { t, toggle: toggleLang, lang } = useLang();
+  const brand = useBrand();
 
   const isInstructor = session?.user?.role === 'instructor' || session?.user?.role === 'admin';
   const isAdmin      = session?.user?.role === 'admin';
@@ -32,8 +35,8 @@ export default function Navbar() {
 
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-brand-600">
-          <BookOpen className="h-6 w-6" />
-          <span className="hidden sm:inline">Universidad X</span>
+          <BrandLogo className="h-6 w-6" />
+          <span className="hidden sm:inline">{brand.name}</span>
         </Link>
 
         {/* Nav links */}

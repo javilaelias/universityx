@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import type { Response as ExpressResponse } from 'express';
+import { brand as defaultBrand, type Brand } from '../config/brand';
 
 export interface CertificateData {
   recipientName: string;
@@ -10,7 +11,10 @@ export interface CertificateData {
   issuerUrl:     string;
 }
 
-export function streamCertificatePDF(res: ExpressResponse, data: CertificateData): void {
+export function streamCertificatePDF(
+  res: ExpressResponse, data: CertificateData, brand: Brand = defaultBrand,
+): void {
+  const { c50, c200, c600, c900 } = brand.colors;
   const doc = new PDFDocument({
     size:    'A4',
     layout:  'landscape',
@@ -28,19 +32,34 @@ export function streamCertificatePDF(res: ExpressResponse, data: CertificateData
   const H = doc.page.height;  // ~595.28 pts
 
   // Header bar
-  doc.rect(0, 0, W, 108).fill('#16a34a');
+  doc.rect(0, 0, W, 108).fill(c600);
 
-  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(30)
-     .text('Universidad X', 0, 28, { align: 'center', width: W });
+  if (brand.logo) {
+    try {
+      doc.image(brand.logo, 30, 19, { fit: [70, 70] });
+    } catch (err) {
+      console.warn('[brand] logo del certificado no se pudo dibujar:', (err as Error).message);
+    }
+  }
 
-  doc.fillColor('#bbf7d0').font('Helvetica').fontSize(12)
-     .text('Plataforma de Aprendizaje Adaptativo', 0, 68, { align: 'center', width: W });
+  // Nombre en una línea, achicado hasta entrar entre los márgenes del logo (mín. 14 pt).
+  const titleW = W - 240;
+  let titleSize = 30;
+  doc.font('Helvetica-Bold').fontSize(titleSize);
+  while (titleSize > 14 && doc.widthOfString(data.issuerName) > titleW) doc.fontSize(--titleSize);
+  doc.fillColor('#ffffff')
+     .text(data.issuerName, 120, 28 + (30 - titleSize) / 2, {
+       align: 'center', width: titleW, height: 36, lineBreak: false, ellipsis: true,
+     });
+
+  doc.fillColor(c200).font('Helvetica').fontSize(12)
+     .text(brand.tagline, 0, 68, { align: 'center', width: W });
 
   // Content background
-  doc.rect(0, 108, W, H - 108 - 50).fill('#f0fdf4');
+  doc.rect(0, 108, W, H - 108 - 50).fill(c50);
 
   // Certificate title
-  doc.fillColor('#14532d').font('Helvetica-Bold').fontSize(15)
+  doc.fillColor(c900).font('Helvetica-Bold').fontSize(15)
      .text('CERTIFICADO DE FINALIZACIÓN', 0, 134, {
        align: 'center', width: W, characterSpacing: 2,
      });
@@ -50,14 +69,14 @@ export function streamCertificatePDF(res: ExpressResponse, data: CertificateData
      .text('Se certifica que', 0, 168, { align: 'center', width: W });
 
   // Recipient name
-  doc.fillColor('#14532d').font('Helvetica-Bold').fontSize(32)
+  doc.fillColor(c900).font('Helvetica-Bold').fontSize(32)
      .text(data.recipientName, 40, 193, { align: 'center', width: W - 80 });
 
   // Decorative line
   const midX = W / 2;
   const lineY = 246;
   doc.moveTo(midX - 180, lineY).lineTo(midX + 180, lineY)
-     .strokeColor('#16a34a').lineWidth(1.5).stroke();
+     .strokeColor(c600).lineWidth(1.5).stroke();
 
   // Completion text
   doc.fillColor('#6b7280').font('Helvetica').fontSize(12)
@@ -85,10 +104,10 @@ export function streamCertificatePDF(res: ExpressResponse, data: CertificateData
      );
 
   // Footer bar
-  doc.rect(0, H - 50, W, 50).fill('#14532d');
+  doc.rect(0, H - 50, W, 50).fill(c900);
 
   doc.fillColor('#ffffff').font('Helvetica').fontSize(10)
-     .text(data.issuerName, 0, H - 30, { align: 'center', width: W });
+     .text(brand.footerText ?? data.issuerName, 0, H - 30, { align: 'center', width: W });
 
   doc.end();
 }

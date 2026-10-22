@@ -2,43 +2,58 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Providers from '@/components/Providers';
 import { ThemeScript } from '@/components/ThemeScript';
+import { BrandProvider } from '@/contexts/brand-context';
+import { getBrand } from '@/lib/brand-server';
+import { brandPaletteCss, DEFAULT_PRIMARY } from '@/lib/brand';
 
-export const metadata: Metadata = {
-  title: 'Universidad X',
-  description: 'Plataforma de aprendizaje adaptativo',
-  applicationName: 'Universidad X',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Universidad X',
-  },
-  formatDetection: { telephone: false },
-};
+export function generateMetadata(): Metadata {
+  const brand = getBrand();
+  return {
+    title: brand.name,
+    description: 'Plataforma de aprendizaje adaptativo',
+    applicationName: brand.name,
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: brand.name,
+    },
+    formatDetection: { telephone: false },
+  };
+}
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#16a34a' },
-    { media: '(prefers-color-scheme: dark)',  color: '#0b1612' },
-  ],
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
+export function generateViewport(): Viewport {
+  const brand = getBrand();
+  return {
+    themeColor: [
+      { media: '(prefers-color-scheme: light)', color: brand.primaryColor ?? DEFAULT_PRIMARY },
+      { media: '(prefers-color-scheme: dark)',  color: '#0b1612' },
+    ],
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const brand = getBrand();
+  const paletteCss = brandPaletteCss(brand);
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
         <ThemeScript />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        {/* Solo números generados por brandPalette (sin texto del operador). */}
+        {paletteCss && <style dangerouslySetInnerHTML={{ __html: paletteCss }} />}
+        <link rel="apple-touch-icon" href={brand.iconUrl ?? '/icons/apple-touch-icon.png'} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href={brand.faviconUrl} sizes="any" />
       </head>
       <body>
-        <Providers>
-          {children}
-        </Providers>
+        <BrandProvider brand={brand}>
+          <Providers>
+            {children}
+          </Providers>
+        </BrandProvider>
       </body>
     </html>
   );

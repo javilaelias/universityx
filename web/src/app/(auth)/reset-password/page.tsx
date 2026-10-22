@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import BrandLogo from '@/components/BrandLogo';
 import { useLang } from '@/contexts/app-context';
 import { passwordPolicyError, failedPassword } from '@/lib/password-policy';
 
@@ -73,7 +74,7 @@ function ResetPasswordContent() {
 
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600">
-            <BookOpen className="h-7 w-7 text-white" />
+            <BrandLogo className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('reset.title')}</h1>
         </div>

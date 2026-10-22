@@ -90,7 +90,7 @@ services:
       SMTP_PORT:    ${SMTP_PORT:-587}
       SMTP_USER:    ${SMTP_USER:-}
       SMTP_PASS:    ${SMTP_PASS:-}
-      SMTP_FROM:    ${SMTP_FROM:-Universidad X <no-reply@universidadx.com>}
+      SMTP_FROM:    ${SMTP_FROM:-}    # vacío = BRAND_NAME <no-reply@universidadx.com>
       WEB_BASE_URL: *origin
 
   helpdesk-service:
@@ -134,7 +134,7 @@ services:
       DATABASE_URL: *pg_url
       JWT_SECRET:   *jwt
       ISSUER_URL:   ${ISSUER_URL:-https://universidadx.com}
-      ISSUER_NAME:  ${ISSUER_NAME:-Universidad X}
+      ISSUER_NAME:  ${ISSUER_NAME:-}  # vacío = BRAND_NAME
 
   media-service:
     build: !reset null

@@ -3,6 +3,7 @@ import { pool }             from '../db/postgres';
 import { redisConnection }  from '../config/redis';
 import { env }              from '../config/env';
 import { buildTemplate }    from '../templates/email.templates';
+import { brand, mailFrom }   from '../config/brand';
 import { createMailTransport, isConsoleMode } from '../mail/transport';
 import { isEmailOnly, consoleLogView } from './events';
 import type { NotificationJob } from './index';
@@ -31,7 +32,7 @@ export function startNotificationWorker() {
 
       // 2. Send email
       const info = await transporter.sendMail({
-        from:    env.SMTP_FROM,
+        from:    mailFrom(env.SMTP_FROM, brand),
         to:      email,
         subject: template.subject,
         html:    template.html,

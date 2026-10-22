@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildTemplate, escapeHtml } from '../templates/email.templates';
+import { mailFrom, readBrand } from '../config/brand';
 import { createMailTransport, isConsoleMode } from '../mail/transport';
 
 const smtp = { SMTP_HOST: 'smtp.example.com', SMTP_PORT: '587', SMTP_USER: 'u', SMTP_PASS: 'p' };
@@ -74,5 +75,48 @@ describe('transporte de correo', () => {
     const noAuth = createMailTransport({ ...smtp, SMTP_USER: '', SMTP_PORT: '465' }).options as { auth?: unknown; secure: boolean };
     expect(noAuth.auth).toBeUndefined();
     expect(noAuth.secure).toBe(true);
+  });
+});
+
+describe('marca configurable', () => {
+  const data = { userName: 'Ana', courseTitle: 'Curso', certificateUrl: 'https://x.test/c/1' };
+
+  it('sin BRAND_* usa la marca actual', () => {
+    const b = readBrand({});
+    expect(b).toEqual({ name: 'Universidad X', logoUrl: null, primaryColor: '#16a34a', footerText: 'Universidad X' });
+    const t = buildTemplate('auth.password_reset', {}, 'es', b);
+    expect(t.subject).toBe('Restablece tu contraseña de Universidad X');
+    expect(t.html).toContain('Universidad X</p>');
+    expect(t.html).not.toContain('<img');
+  });
+
+  it('aplica nombre, logo, color y pie configurados', () => {
+    const b = readBrand({
+      BRAND_NAME: 'Academia Sol', BRAND_LOGO_URL: 'https://cdn.test/logo.png',
+      BRAND_PRIMARY_COLOR: '#AA3300', BRAND_FOOTER_TEXT: 'Academia Sol · Lima',
+    });
+    expect(buildTemplate('otro.evento', {}, 'en', b).subject).toBe('New notification from Academia Sol');
+    const t = buildTemplate('certificate.issued', data, 'es', b);
+    expect(t.html).toContain('<img src="https://cdn.test/logo.png" alt="Academia Sol"');
+    expect(t.html).toContain('<a style="color:#aa3300" href="https://x.test/c/1">');
+    expect(t.html).toContain('Academia Sol · Lima</p>');
+  });
+
+  it('descarta logo no https, color inválido y escapa el pie', () => {
+    const b = readBrand({ BRAND_LOGO_URL: 'javascript:alert(1)', BRAND_PRIMARY_COLOR: 'red;x', BRAND_FOOTER_TEXT: '<b>x</b>\r\nBcc' });
+    expect(b.logoUrl).toBeNull();
+    expect(b.primaryColor).toBe('#16a34a');
+    expect(readBrand({ BRAND_LOGO_URL: '/brand/logo.png' }).logoUrl).toBeNull();
+    const t = buildTemplate('ticket.created', data, 'es', b);
+    expect(t.html).toContain('&lt;b&gt;x&lt;/b&gt; Bcc</p>');
+    expect(t.html).not.toContain('<b>');
+  });
+});
+
+describe('remitente', () => {
+  it('usa SMTP_FROM si está y, si no, el nombre de la marca como objeto (nodemailer lo entrecomilla)', () => {
+    const b = readBrand({ BRAND_NAME: 'Academia Sol, Lima' });
+    expect(mailFrom('Otro <x@y.z>', b)).toBe('Otro <x@y.z>');
+    expect(mailFrom('  ', b)).toEqual({ name: 'Academia Sol, Lima', address: 'no-reply@universidadx.com' });
   });
 });

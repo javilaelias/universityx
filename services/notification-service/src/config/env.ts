@@ -12,7 +12,8 @@ const schema = z.object({
   SMTP_PORT:    z.string().default('587'),
   SMTP_USER:    z.string().default(''),
   SMTP_PASS:    z.string().default(''),
-  SMTP_FROM:    z.string().default('Universidad X <no-reply@universidadx.com>'),
+  // Vacío = BRAND_NAME <no-reply@universidadx.com> (ver mailFrom en config/brand.ts)
+  SMTP_FROM:    z.string().default(''),
   // URL pública de la web: el enlace de reset de contraseña solo puede apuntar ahí
   WEB_BASE_URL: z.string().url().default('http://localhost:3000'),
 });

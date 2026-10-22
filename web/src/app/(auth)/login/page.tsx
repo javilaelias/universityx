@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Eye, EyeOff, Loader2, Building2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Building2 } from 'lucide-react';
 import { Suspense } from 'react';
 import { useLang } from '@/contexts/app-context';
+import BrandLogo from '@/components/BrandLogo';
+import { brandFooter, useBrand } from '@/contexts/brand-context';
 
 // ── Iconos SVG inline ─────────────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ function LoginContent() {
   const router      = useRouter();
   const params      = useSearchParams();
   const { t }       = useLang();
+  const brand       = useBrand();
 
   const [email,      setEmail]      = useState('');
   const [password,   setPassword]   = useState('');
@@ -89,10 +92,10 @@ function LoginContent() {
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600">
-            <BookOpen className="h-7 w-7 text-white" />
+            <BrandLogo className="h-7 w-7 text-white" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Universidad X</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{brand.name}</h1>
             <p className="mt-1 text-sm text-gray-500">{t('login.subtitle')}</p>
           </div>
         </div>
@@ -245,7 +248,7 @@ function LoginContent() {
         </p>
 
         <p className="text-center text-xs text-gray-400">
-          Universidad X © {new Date().getFullYear()}
+          {brandFooter(brand)}
         </p>
       </div>
     </div>
