@@ -45,7 +45,9 @@ Reglas del proyecto para todos los ítems:
 - [x] 8. Marca configurable (white-label) [requiere concilio]: nombre, logo, favicon, colores (tokens de tema) y textos de pie por configuración (env o archivo de marca), sin tocar código; aplicada a web, emails, certificado PDF y manifest PWA. Default = marca actual. - cerrado 2026-10-21: Marca white-label por bloque BRAND_* en runtime (web, manifest, emails, PDF; vacío = Universidad X); concilio 5 con cambios, /code-review high 6/10 corregidos, QA juvinqa APROBADO.
       npx vitest run (notification) → 23 passed · (credentials) → 11 passed
       npm run build (web) → OK; smoke next start: <title>Academia Zeta, --brand-600:170 51 0, manifest theme_color #aa3300
-- [ ] 9. E2E Playwright del flujo crítico: login → matrícula → contenido → quiz → certificado → verificación pública, más recuperar contraseña y un smoke de /admin; ES/EN y tema claro/oscuro; job en CI.
+- [x] 9. E2E Playwright del flujo crítico: login → matrícula → contenido → quiz → certificado → verificación pública, más recuperar contraseña y un smoke de /admin; ES/EN y tema claro/oscuro; job en CI. - cerrado 2026-10-21: E2E Playwright (flujo crítico login→matrícula→contenido→quiz→certificado→/verify, recuperar contraseña, smoke /admin, ES/EN + tema) con job `e2e` en CI; arreglados curso/quiz rotos en la web, «Reclamar credenciales», IDOR de emisión y atajo del quiz por `/progress`; concilio 5, /code-review high, /security-review, QA juvinqa aprobada (commit 4ac7873).
+      cd e2e && npx playwright test → 6 passed
+      services/credentials-service: npx vitest run → 19 passed · services/lms-service: npx vitest run → 20 passed
 - [ ] 10. Push FCM real: endpoint para registrar el token del dispositivo, envío desde notification-service con firebase-admin (opcional por config: sin credenciales → solo in-app) y `onNewToken` de Android enviando el token. Mecánico.
 
 ## Lanzador (run.bat)
