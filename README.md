@@ -18,6 +18,8 @@ Estado vigente y pendientes: [`ESTADO_PROYECTO.md`](ESTADO_PROYECTO.md). Plan co
    necesita además su `services/<servicio>/.env` (no hay plantilla por servicio: las URLs de BD y Redis las
    inyecta el compose; el resto se toma de `.env.example`). Nunca commitear un `.env`.
 2. Levantar todo:
+   - `run.bat` — doble clic: levanta BD, microservicios y web, espera a que estén sanos y abre el
+     navegador. Si el puerto de la BD está ocupado, avisa y no mata nada. Nunca borra datos.
    - `START.bat` — verifica Docker y corre `docker compose up -d`. Subcomandos: `stop`, `status`, `logs`,
      `web` (Next.js en modo dev) y `reset`.
    - `CERO.ps1` — mismo arranque desde PowerShell (`-Stop`, `-Status`, `-Reset`).
