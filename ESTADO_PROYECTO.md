@@ -3,9 +3,9 @@
 > Continuidad del proyecto para JuvinFactory. Conciso: estado + pendientes + hallazgos.
 > Historial previo: `PROGRESS.md` y `docs/04-roadmap.md` (2026-06-17). Plan comercial: `plan_rentable.md`.
 
-## Estado (2026-10-21)
+## Estado (2026-10-22)
 
-- **Versión:** MVP hecho → en curso **v1.0 "Piloto vendible"** (ámbito comercial, white-label).
+- **Versión:** **v1.0 "Piloto vendible"** cerrada (2026-10-22; ámbito comercial, white-label). Notas: `docs/07-notas-v1.0.md`.
 - **Backend:** 8 servicios — auth `4001`, lms `4002`, notification `4003`, helpdesk `4004`, sync `4005`,
   ai `4006` (FastAPI), credentials `4007` (Open Badges 3.0 + PDF), media `4008` (FFmpeg/HLS).
 - **Web (Next.js 14):** dashboard, catálogo, curso, quiz, tickets, perfil con badges, panel instructor,
@@ -24,9 +24,15 @@
 - **Calidad:** Vitest en auth, lms, credentials, media, notification; CI/CD GitHub Actions (ci, cd, release).
 - **E2E (Playwright):** `e2e/` — flujo crítico (login → matrícula → contenido → quiz → certificado → `/verify`), recuperar contraseña, smoke `/admin`, ES/EN + tema; job `e2e` en `ci.yml`. Arregló curso/quiz rotos en la web (adaptadores BFF `lib/lms-shape.ts`), "Reclamar credenciales" (`POST /credentials` sin body, IDOR cerrado) y el atajo de quiz por `/progress` (2026-10-21).
 
-## Pendientes v1.0
+## Pendientes
 
-Ver `cola-trabajo.md` (driver headless, se corre con `D:\JuvinFactory\juvinciclo.bat`).
+Cola v1.0 vacía. Lo próximo (v1.1) sale de los hallazgos de abajo.
+
+## Cierre de lote (JuvinRelease, 2026-10-22)
+
+- [ ] CERO.ps1/CERO.sh ejecutado desde cero — SKIP: compose con `container_name` y puertos fijos no se aísla con `-p`; correrlo pisa la BD de trabajo
+- [x] migraciones aplicadas sobre BD vacía (Postgres 16 descartable con los mismos init: esquema + 002–009, 23 tablas)
+- [x] .env.example reconciliado con .env (cubre todas las variables de ambos compose; el `.env` de trabajo tiene claves heredadas sin uso y no se tocó)
 
 ## Hallazgos
 
@@ -44,6 +50,7 @@ Ver `cola-trabajo.md` (driver headless, se corre con `D:\JuvinFactory\juvinciclo
 - Email solo por consola en dev.
 - `cd.yml` arma `.env.staging` en el runner y no lo copia al VPS (manda el `.env` del servidor).
 - SSO SAML/OIDC: stub, sin IdP real.
+- `CERO.ps1` guardado con doble codificación UTF-8 (tildes y recuadros ilegibles al imprimir).
 
 ## Presentaciones
 
