@@ -42,7 +42,9 @@ Reglas del proyecto para todos los ítems:
 - [x] 7. Panel de administración mínimo [requiere concilio]: rol admin en web `/admin` — usuarios (listar, crear, cambiar rol, desactivar), todos los cursos (publicar/despublicar) y cola de tickets como staff; endpoints protegidos por rol en los servicios. `/security-review` (API expuesta). - cerrado 2026-10-21: Panel admin /admin (usuarios, cursos, tickets staff) con endpoints por rol en auth/lms/helpdesk; concilio 5, /code-review high 9/10 corregidos, /security-review sin hallazgos, juvinqa APROBADO.
       auth-service: npx vitest run → 64 passed; lms-service: npx vitest run → 18 passed
       tsc --noEmit limpio en auth, lms, helpdesk y web; web: npx next build → OK (/admin generado)
-- [ ] 8. Marca configurable (white-label) [requiere concilio]: nombre, logo, favicon, colores (tokens de tema) y textos de pie por configuración (env o archivo de marca), sin tocar código; aplicada a web, emails, certificado PDF y manifest PWA. Default = marca actual.
+- [x] 8. Marca configurable (white-label) [requiere concilio]: nombre, logo, favicon, colores (tokens de tema) y textos de pie por configuración (env o archivo de marca), sin tocar código; aplicada a web, emails, certificado PDF y manifest PWA. Default = marca actual. - cerrado 2026-10-21: Marca white-label por bloque BRAND_* en runtime (web, manifest, emails, PDF; vacío = Universidad X); concilio 5 con cambios, /code-review high 6/10 corregidos, QA juvinqa APROBADO.
+      npx vitest run (notification) → 23 passed · (credentials) → 11 passed
+      npm run build (web) → OK; smoke next start: <title>Academia Zeta, --brand-600:170 51 0, manifest theme_color #aa3300
 - [ ] 9. E2E Playwright del flujo crítico: login → matrícula → contenido → quiz → certificado → verificación pública, más recuperar contraseña y un smoke de /admin; ES/EN y tema claro/oscuro; job en CI.
 - [ ] 10. Push FCM real: endpoint para registrar el token del dispositivo, envío desde notification-service con firebase-admin (opcional por config: sin credenciales → solo in-app) y `onNewToken` de Android enviando el token. Mecánico.
 
