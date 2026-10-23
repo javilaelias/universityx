@@ -55,3 +55,4 @@ Cola v1.0 vacía. Lo próximo (v1.1) sale de los hallazgos de abajo.
 ## Presentaciones
 
 - Presentación de portafolio mvp: omitida (2026-10-21) — el usuario la pidió para el cierre de v1.0.
+- Presentación de portafolio v1_0: https://claude.ai/artifact/9rHUcXXpFgRrdVaCnz8n6j (2026-10-22)
