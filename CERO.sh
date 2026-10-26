@@ -62,7 +62,8 @@ else
 fi
 
 pgport=$(grep -E '^POSTGRES_PORT=' .env 2>/dev/null | cut -d= -f2 || true)
+webport=$(grep -E '^WEB_PORT=' .env 2>/dev/null | cut -d= -f2 || true)
 echo
-echo "  Web         → http://localhost:3000"
+echo "  Web         → http://localhost:${webport:-3300}"
 echo "  PostgreSQL  → localhost:${pgport:-5432}"
 echo "  pgAdmin     → http://localhost:5050   ·   Mongo-Express → http://localhost:8082"

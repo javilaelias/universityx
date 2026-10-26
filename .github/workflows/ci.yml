@@ -138,6 +138,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
+      # El runner no comparte puerto con otros proyectos: el web sigue en 3000 (el default local es 3300).
+      WEB_PORT: "3000"
       E2E_BASE_URL: http://localhost:3000
       E2E_DATABASE_URL: postgresql://ux_admin:ux_dev_pass_2024@localhost:5432/universidadx
     steps:

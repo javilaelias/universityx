@@ -24,7 +24,7 @@ Estado vigente y pendientes: [`ESTADO_PROYECTO.md`](ESTADO_PROYECTO.md). Plan co
      `web` (Next.js en modo dev) y `reset`.
    - `CERO.ps1` — mismo arranque desde PowerShell (`-Stop`, `-Status`, `-Reset`).
    - O directo: `docker compose up -d --build`.
-3. Abrir http://localhost:3000.
+3. Abrir http://localhost:3300 (puerto `WEB_PORT`; el 3000 queda libre para otros proyectos).
 
 > **Cuidado:** `START.bat reset` y `CERO.ps1 -Reset` hacen `docker compose down -v`: borran los volúmenes
 > (todos los datos de PostgreSQL, MongoDB y Redis).

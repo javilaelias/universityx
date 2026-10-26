@@ -13,13 +13,13 @@ title Universidad X -- run.bat
 cd /d "%~dp0"
 
 set "PGPORT=5432"
-set "WEBPORT=3000"
+set "WEBPORT=3300"
 if exist ".env" for /f "usebackq eol=# tokens=1,* delims==" %%A in (".env") do (
     if /i "%%A"=="POSTGRES_PORT" set "PGPORT=%%B"
     if /i "%%A"=="WEB_PORT" set "WEBPORT=%%B"
 )
 if not defined PGPORT set "PGPORT=5432"
-if not defined WEBPORT set "WEBPORT=3000"
+if not defined WEBPORT set "WEBPORT=3300"
 :: Sin comillas ni comentario al final de la linea (POSTGRES_PORT=5433 # ...)
 set "PGPORT=%PGPORT:"=%"
 set "WEBPORT=%WEBPORT:"=%"

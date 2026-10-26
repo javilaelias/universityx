@@ -5,7 +5,7 @@
 # Microservicios:   auth(4001) · lms(4002) · notification(4003)
 #                   helpdesk(4004) · sync(4005) · ai(4006) · credentials(4007)
 #                   media(4008)
-# Frontend:         web(3000)
+# Frontend:         web(3300; WEB_PORT)
 # =============================================================================
 
 # Marca configurable (white-label): bloque BRAND_* del .env raíz, leído en runtime. Ver docs/07-marca.md.
@@ -146,7 +146,8 @@ services:
     environment:
       DATABASE_URL:    postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
       REDIS_URL:       redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
-      WEB_BASE_URL:    ${NEXTAUTH_URL:-http://localhost:3000}
+      WEB_BASE_URL:    ${NEXTAUTH_URL:-http://localhost:${WEB_PORT:-3300}}
+      ALLOWED_ORIGINS: ${NEXTAUTH_URL:-http://localhost:${WEB_PORT:-3300}}
       NOTIFICATION_SERVICE_URL: http://ux_notification:4003
       # SSO SAML (opcional — sin estas vars los endpoints devuelven 503)
       SSO_ENTRY_POINT: ${SSO_ENTRY_POINT:-}
@@ -180,6 +181,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
       REDIS_URL:    redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
+      ALLOWED_ORIGINS: ${NEXTAUTH_URL:-http://localhost:${WEB_PORT:-3300}}
     ports:
       - "4002:4002"
     depends_on:
@@ -209,7 +211,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-ux_admin}:${POSTGRES_PASSWORD:-ux_dev_pass_2024}@ux_postgres:5432/${POSTGRES_DB:-universidadx}
       REDIS_URL:    redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
-      WEB_BASE_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      WEB_BASE_URL: ${NEXTAUTH_URL:-http://localhost:${WEB_PORT:-3300}}
       <<: *brand
     ports:
       - "4003:4003"
@@ -343,7 +345,7 @@ services:
       REDIS_URL:          redis://:${REDIS_PASSWORD:-ux_dev_pass_2024}@ux_redis:6379
       MEDIA_STORAGE_PATH: /data/media
       MEDIA_EXTERNAL_URL: ${MEDIA_EXTERNAL_URL:-http://localhost:4008}
-      ALLOWED_ORIGINS:    ${NEXTAUTH_URL:-http://localhost:3000}
+      ALLOWED_ORIGINS:    ${NEXTAUTH_URL:-http://localhost:${WEB_PORT:-3300}}
     ports:
       - "${MEDIA_PORT:-4008}:4008"
     volumes:
@@ -362,18 +364,19 @@ services:
     networks:
       - ux_network
 
-  # ── web (Next.js) :3000 ──────────────────────────────────────────────────────
+  # ── web (Next.js) :3000 interno, publicado en WEB_PORT (3300) ────────────────
+  # 3000 lo ocupan otros proyectos en esta PC; la URL publica sigue a WEB_PORT.
   web:
     build:
       context: ./web
       dockerfile: Dockerfile
       args:
         NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-universidad-x-nextauth-secret-dev-2024}
-        NEXTAUTH_URL:    ${NEXTAUTH_URL:-http://localhost:3000}
+        NEXTAUTH_URL:    ${NEXTAUTH_URL:-http://localhost:${WEB_PORT:-3300}}
     container_name: ux_web
     restart: unless-stopped
     environment:
-      NEXTAUTH_URL:             ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_URL:             ${NEXTAUTH_URL:-http://localhost:${WEB_PORT:-3300}}
       NEXTAUTH_SECRET:          ${NEXTAUTH_SECRET:-universidad-x-nextauth-secret-dev-2024}
       AUTH_SERVICE_URL:         http://ux_auth:4001
       LMS_SERVICE_URL:          http://ux_lms:4002
@@ -393,7 +396,7 @@ services:
       AZURE_AD_TENANT_ID:       ${AZURE_AD_TENANT_ID:-common}
       <<: *brand
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "${WEB_PORT:-3300}:3000"
     depends_on:
       auth-service:
         condition: service_healthy
